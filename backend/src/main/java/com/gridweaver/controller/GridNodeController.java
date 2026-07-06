@@ -40,4 +40,15 @@ public class GridNodeController {
         response.put("timestamp", System.currentTimeMillis());
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/ws/metrics")
+    public ResponseEntity<Map<String, Object>> wsMetrics() {
+        Map<String, Object> metrics = new HashMap<>();
+        metrics.put("activeConnections", webSocketHandler.getActiveConnectionCount());
+        metrics.put("totalConnectionsEver", webSocketHandler.getTotalConnectionsEver());
+        metrics.put("totalMessagesReceived", webSocketHandler.getTotalMessagesReceived());
+        metrics.put("timestamp", System.currentTimeMillis());
+        return ResponseEntity.ok(metrics);
+}
+
 }
