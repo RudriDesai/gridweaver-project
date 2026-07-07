@@ -73,6 +73,14 @@ public class IoTWebSocketHandler extends TextWebSocketHandler {
             session.getId(), exception.getMessage());
         activeSessions.remove(session.getId());
     }
+    
+    public void broadcastToAll(String message) throws IOException {
+        for (WebSocketSession session : activeSessions.values()) {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(message));
+            }
+        }
+    }
 
     // ── Metrics (used by controller) ─────────────────
 
