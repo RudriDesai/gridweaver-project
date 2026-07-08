@@ -19,6 +19,7 @@ public class GridNode {
 
     @JsonProperty("longitude")
     private double longitude;
+
     /**
      * Current operational state.
      * Valid values: CHARGING, DISCHARGING, IDLE, FAULT
