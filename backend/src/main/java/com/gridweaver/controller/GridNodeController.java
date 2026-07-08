@@ -30,6 +30,7 @@ public class GridNodeController {
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> response = new HashMap<>();
+        
         response.put("status", "UP");
         response.put("application", "GridWeaver");
         response.put("virtualThreadsEnabled", true);
@@ -42,13 +43,25 @@ public class GridNodeController {
     }
 
     @GetMapping("/ws/metrics")
-    public ResponseEntity<Map<String, Object>> wsMetrics() {
+    public ResponseEntity<Map<String, Object>> getWebSocketMetrics() {
+
         Map<String, Object> metrics = new HashMap<>();
-        metrics.put("activeConnections", webSocketHandler.getActiveConnectionCount());
-        metrics.put("totalConnectionsEver", webSocketHandler.getTotalConnectionsEver());
-        metrics.put("totalMessagesReceived", webSocketHandler.getTotalMessagesReceived());
+
+        metrics.put("activeConnections",
+                webSocketHandler.getActiveConnectionCount());
+
+        metrics.put("totalConnectionsEver",
+                webSocketHandler.getTotalConnectionsEver());
+
+        metrics.put("totalMessagesReceived",
+                webSocketHandler.getTotalMessagesReceived());
+
+        metrics.put("failedConnections",
+                webSocketHandler.getFailedConnections());
+
         metrics.put("timestamp", System.currentTimeMillis());
+
         return ResponseEntity.ok(metrics);
-}
+    }
 
 }
