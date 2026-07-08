@@ -1,47 +1,59 @@
 package com.gridweaver.controller;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.gridweaver.handler.IoTWebSocketHandler;
+import com.gridweaver.model.GridNode;
+import com.gridweaver.service.GridNodeService;
 
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "${gridweaver.cors.allowed-origin}")
 public class GridNodeController {
 
-    @Value("${gridweaver.cors.allowed-origin}")
-    private String allowedOrigin;
-
+    private final GridNodeService gridNodeService;
     private final IoTWebSocketHandler webSocketHandler;
 
-    public GridNodeController(IoTWebSocketHandler webSocketHandler) {
+    public GridNodeController(GridNodeService gridNodeService,
+                              IoTWebSocketHandler webSocketHandler) {
+        this.gridNodeService = gridNodeService;
         this.webSocketHandler = webSocketHandler;
     }
 
-    // Health check — verifies Virtual Threads are active
+    // ── Health Check ────────────────────────────────────
     @GetMapping("/health")
-    public ResponseEntity<Map<String, Object>> health() {
-        Map<String, Object> response = new HashMap<>();
-        
+    public ResponseEntity<Map<String, String>> health() {
+        Map<String, String> response = new HashMap<>();
         response.put("status", "UP");
-        response.put("application", "GridWeaver");
-        response.put("virtualThreadsEnabled", true);
-        response.put("activeWsConnections",
-            webSocketHandler.getActiveConnectionCount());
-        response.put("totalWsMessages",
-            webSocketHandler.getTotalMessagesReceived());
-        response.put("timestamp", System.currentTimeMillis());
         return ResponseEntity.ok(response);
     }
 
+    // ── Node APIs ───────────────────────────────────────
+    @GetMapping("/nodes")
+    public ResponseEntity<List<GridNode>> getAllNodes() {
+        return ResponseEntity.ok(gridNodeService.getAllNodes());
+    }
+
+    @GetMapping("/nodes/init/{count}")
+    public ResponseEntity<List<GridNode>> initNodes(@PathVariable int count) {
+        return ResponseEntity.ok(gridNodeService.initializeMockNodes(count));
+    }
+
+    @GetMapping("/nodes/{id}")
+    public ResponseEntity<GridNode> getNodeById(@PathVariable String id) {
+        GridNode node = gridNodeService.getNodeById(id);
+        if (node == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(node);
+    }
+
+    // ── WebSocket Metrics ───────────────────────────────
     @GetMapping("/ws/metrics")
     public ResponseEntity<Map<String, Object>> getWebSocketMetrics() {
 
@@ -63,5 +75,4 @@ public class GridNodeController {
 
         return ResponseEntity.ok(metrics);
     }
-
 }
