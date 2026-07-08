@@ -56,14 +56,23 @@ public class GridNodeController {
     // ── WebSocket Metrics ───────────────────────────────
     @GetMapping("/ws/metrics")
     public ResponseEntity<Map<String, Object>> getWebSocketMetrics() {
+
         Map<String, Object> metrics = new HashMap<>();
-        metrics.put("activeConnections", 
-            webSocketHandler.getActiveConnectionCount());
-        metrics.put("totalMessagesReceived", 
-            webSocketHandler.getTotalMessagesReceived());
-        metrics.put("totalConnectionsEver", 
-            webSocketHandler.getTotalConnectionsEver());
+
+        metrics.put("activeConnections",
+                webSocketHandler.getActiveConnectionCount());
+
+        metrics.put("totalConnectionsEver",
+                webSocketHandler.getTotalConnectionsEver());
+
+        metrics.put("totalMessagesReceived",
+                webSocketHandler.getTotalMessagesReceived());
+
+        metrics.put("failedConnections",
+                webSocketHandler.getFailedConnections());
+
         metrics.put("timestamp", System.currentTimeMillis());
+
         return ResponseEntity.ok(metrics);
     }
 }
