@@ -122,6 +122,12 @@ export default function GridMap() {
               <br />
               Grid Load: {node.gridLoad}%
             </Popup>
+  <strong>{node.nodeId}</strong><br />
+  Status: {node.status}<br />
+  <em style={{ color: "#888" }}>Battery State: pending (Week 2)</em><br />
+  Power: {node.powerOutput} kW<br />
+  Grid Load: {node.gridLoad}%
+</Popup>
           </Marker>
         ))}
       </MapContainer>
