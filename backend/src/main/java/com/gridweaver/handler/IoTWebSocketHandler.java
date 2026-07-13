@@ -136,6 +136,14 @@ public class IoTWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    public void broadcastPing() throws IOException {
+        String ping = String.format(
+                "{\"type\":\"PING\",\"activeConnections\":%d,\"ts\":%d}",
+                getActiveConnectionCount(), System.currentTimeMillis()
+        );
+        broadcastToAll(ping);
+    }
+
     // -------------------- Metrics --------------------
 
     public int getActiveConnectionCount() {

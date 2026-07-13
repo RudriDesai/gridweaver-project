@@ -3,13 +3,16 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchAllNodes, initMockNodes } from "../services/api";
+import { useWebSocket } from "../hooks/useWebSocket";
 
-// Fix default marker icon paths (common Leaflet + bundler issue)
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
 // Color-code markers by node status
@@ -22,11 +25,13 @@ const STATUS_COLORS = {
 
 function statusIcon(status) {
   const color = STATUS_COLORS[status] || "#6b7280";
+
   return L.divIcon({
     className: "custom-node-marker",
     html: `<div style="
       background:${color};
-      width:16px;height:16px;
+      width:16px;
+      height:16px;
       border-radius:50%;
       border:2px solid white;
       box-shadow:0 0 4px rgba(0,0,0,0.4);
@@ -37,6 +42,9 @@ function statusIcon(status) {
 }
 
 export default function GridMap() {
+
+  const { connected, lastMessage } = useWebSocket();
+
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -47,7 +55,6 @@ export default function GridMap() {
     try {
       let data = await fetchAllNodes();
       if (data.length === 0) {
-        // No nodes yet — seed with mock data
         data = await initMockNodes(20);
       }
       setNodes(data);
@@ -62,14 +69,32 @@ export default function GridMap() {
     loadNodes();
   }, []);
 
-  if (loading) return <div className="status-banner">Loading grid nodes…</div>;
-  if (error) return <div className="status-banner error">Error: {error}</div>;
+  useEffect(() => {
+    if (lastMessage) {
+      console.log("[WS] Message:", lastMessage);
+    }
+  }, [lastMessage]);
+
+  if (loading) {
+    return <div className="status-banner">Loading grid nodes...</div>;
+  }
+
+  if (error) {
+    return <div className="status-banner error">Error: {error}</div>;
+  }
 
   return (
     <div className="grid-map-wrapper">
+
       <div className="map-header">
         <h2>GridWeaver — Live Microgrid Map</h2>
+
         <span>{nodes.length} nodes loaded</span>
+
+        <span style={{ marginLeft: "15px", fontWeight: "bold" }}>
+          WebSocket: {connected ? "🟢 Connected" : "🔴 Disconnected"}
+        </span>
+
         <button onClick={loadNodes}>Refresh</button>
       </div>
 
@@ -79,7 +104,7 @@ export default function GridMap() {
         style={{ height: "600px", width: "100%" }}
       >
         <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
+          attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {nodes.map((node) => (
@@ -89,9 +114,12 @@ export default function GridMap() {
             icon={statusIcon(node.status)}
           >
             <Popup>
-              <strong>{node.nodeId}</strong><br />
-              Status: {node.status}<br />
-              Power: {node.powerOutput} kW<br />
+              <strong>{node.nodeId}</strong>
+              <br />
+              Status: {node.status}
+              <br />
+              Power: {node.powerOutput} kW
+              <br />
               Grid Load: {node.gridLoad}%
             </Popup>
           </Marker>
