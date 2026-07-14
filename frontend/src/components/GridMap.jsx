@@ -130,6 +130,10 @@ export default function GridMap() {
               <br />
               Power: {node.powerOutput} kW
               <br />
+              <strong>{node.nodeId}</strong><br />
+              Status: {node.status}<br />
+              <em style={{ color: "#666" }}>{STATE_DESCRIPTIONS[node.status] || ""}</em><br />
+              Power: {node.powerOutput} kW<br />
               Grid Load: {node.gridLoad}%
             </Popup>
           </Marker>
