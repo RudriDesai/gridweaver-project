@@ -23,6 +23,13 @@ const STATUS_COLORS = {
   FAULT: "#ef4444",
 };
 
+const STATE_DESCRIPTIONS = {
+  CHARGING: "Battery is charging (low grid load)",
+  DISCHARGING: "Battery is discharging (high grid load)",
+  IDLE: "Battery idle (load within normal range)",
+  FAULT: "Battery fault detected",
+};
+
 function statusIcon(status) {
   const color = STATUS_COLORS[status] || "#6b7280";
 
@@ -114,20 +121,12 @@ export default function GridMap() {
             icon={statusIcon(node.status)}
           >
             <Popup>
-              <strong>{node.nodeId}</strong>
-              <br />
-              Status: {node.status}
-              <br />
-              Power: {node.powerOutput} kW
-              <br />
+              <strong>{node.nodeId}</strong><br />
+              Status: {node.status}<br />
+              <em style={{ color: "#666" }}>{STATE_DESCRIPTIONS[node.status] || ""}</em><br />
+              Power: {node.powerOutput} kW<br />
               Grid Load: {node.gridLoad}%
             </Popup>
-  <strong>{node.nodeId}</strong><br />
-  Status: {node.status}<br />
-  <em style={{ color: "#888" }}>Battery State: pending (Week 2)</em><br />
-  Power: {node.powerOutput} kW<br />
-  Grid Load: {node.gridLoad}%
-</Popup>
           </Marker>
         ))}
       </MapContainer>
