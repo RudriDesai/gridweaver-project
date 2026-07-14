@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.gridweaver.model.GridNode;
-
+import com.gridweaver.service.BatteryStateService;
 /**
  * Registry and management service for all GridNodes in the microgrid.
  *
@@ -26,11 +26,17 @@ public class GridNodeService {
     // Key: nodeId, Value: GridNode
     private final ConcurrentHashMap<String, GridNode> nodeRegistry =
             new ConcurrentHashMap<>();
-
+    
+    // Battery State Machine service
+    private final BatteryStateService batteryStateService;
+    
     // Valid status values — enforced on registration
     private static final List<String> VALID_STATUSES =
             List.of("CHARGING", "DISCHARGING", "IDLE", "FAULT");
-
+    
+    public GridNodeService(BatteryStateService batteryStateService) {
+        this.batteryStateService = batteryStateService;
+    }
     // ── Registry Operations ───────────────────────────
 
     /**
@@ -82,9 +88,8 @@ public class GridNodeService {
      * Week 2: Real nodes will register themselves via WebSocket.
      */
     public List<GridNode> initializeMockNodes(int count) {
-        nodeRegistry.clear();
 
-        String[] statuses = {"CHARGING", "DISCHARGING", "IDLE", "FAULT"};
+        nodeRegistry.clear();
 
         // Mock city center: London
         double baseLat = 51.505;
@@ -96,13 +101,22 @@ public class GridNodeService {
             double lat = baseLat + (Math.random() * 0.2 - 0.1);
             double lng = baseLng + (Math.random() * 0.2 - 0.1);
 
-            String status = statuses[i % statuses.length];
-            double power  = Math.round(Math.random() * 100 * 10.0) / 10.0;
-            double load   = Math.round(Math.random() * 100 * 10.0) / 10.0;
+            double power = Math.round(Math.random() * 100 * 10.0) / 10.0;
+            double load = Math.round(Math.random() * 100 * 10.0) / 10.0;
+
+            String nodeId = "NODE-" + String.format("%04d", i + 1);
+
+            String status = batteryStateService
+                    .evaluate(nodeId, load)
+                    .name();
 
             GridNode node = new GridNode(
-                    "NODE-" + String.format("%04d", i + 1),
-                    lat, lng, status, power, load
+                    nodeId,
+                    lat,
+                    lng,
+                    status,
+                    power,
+                    load
             );
 
             nodeRegistry.put(node.getNodeId(), node);
