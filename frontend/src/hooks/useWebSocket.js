@@ -45,6 +45,7 @@ export function useWebSocket() {
     manuallyClosedRef.current = false;
     connect();
 
+
     return () => {
       manuallyClosedRef.current = true;
       clearTimeout(reconnectTimer.current);

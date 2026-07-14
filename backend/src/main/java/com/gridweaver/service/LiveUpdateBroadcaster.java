@@ -33,7 +33,7 @@ public class LiveUpdateBroadcaster {
     @Scheduled(fixedRate = 2000)
     public void broadcastNodeUpdates() {
         if (webSocketHandler.getActiveConnectionCount() == 0) {
-            return; // nobody listening, skip work
+            return;
         }
         try {
             List<GridNode> nodes = gridNodeService.getAllNodes();
