@@ -23,6 +23,14 @@ const STATUS_COLORS = {
   FAULT: "#ef4444",
 };
 
+// Day 2 (A6) — human-readable description per battery state
+const STATE_DESCRIPTIONS = {
+  CHARGING: "Battery is charging (low grid load)",
+  DISCHARGING: "Battery is discharging (high grid load)",
+  IDLE: "Battery idle (load within normal range)",
+  FAULT: "Battery fault detected",
+};
+
 function statusIcon(status) {
   const color = STATUS_COLORS[status] || "#6b7280";
 
@@ -42,7 +50,6 @@ function statusIcon(status) {
 }
 
 export default function GridMap() {
-
   const { connected, lastMessage } = useWebSocket();
 
   const [nodes, setNodes] = useState([]);
@@ -70,8 +77,8 @@ export default function GridMap() {
   }, []);
 
   useEffect(() => {
-    if (lastMessage) {
-      console.log("[WS] Message:", lastMessage);
+    if (lastMessage?.type === "NODE_UPDATE" && Array.isArray(lastMessage.nodes)) {
+      setNodes(lastMessage.nodes);
     }
   }, [lastMessage]);
 
@@ -85,7 +92,6 @@ export default function GridMap() {
 
   return (
     <div className="grid-map-wrapper">
-
       <div className="map-header">
         <h2>GridWeaver — Live Microgrid Map</h2>
 
@@ -118,16 +124,14 @@ export default function GridMap() {
               <br />
               Status: {node.status}
               <br />
+              <em style={{ color: "#666" }}>
+                {STATE_DESCRIPTIONS[node.status] || ""}
+              </em>
+              <br />
               Power: {node.powerOutput} kW
               <br />
               Grid Load: {node.gridLoad}%
             </Popup>
-  <strong>{node.nodeId}</strong><br />
-  Status: {node.status}<br />
-  <em style={{ color: "#888" }}>Battery State: pending (Week 2)</em><br />
-  Power: {node.powerOutput} kW<br />
-  Grid Load: {node.gridLoad}%
-</Popup>
           </Marker>
         ))}
       </MapContainer>
