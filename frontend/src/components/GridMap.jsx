@@ -49,6 +49,14 @@ function statusIcon(status) {
   });
 }
 
+function timeAgo(timestamp) {
+  if (!timestamp) return "unknown";
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 5) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  return `${Math.floor(seconds / 60)}m ago`;
+}
+
 export default function GridMap() {
   const { connected, lastMessage } = useWebSocket();
 
@@ -130,11 +138,11 @@ export default function GridMap() {
               <br />
               Power: {node.powerOutput} kW
               <br />
-              <strong>{node.nodeId}</strong><br />
-              Status: {node.status}<br />
-              <em style={{ color: "#666" }}>{STATE_DESCRIPTIONS[node.status] || ""}</em><br />
-              Power: {node.powerOutput} kW<br />
               Grid Load: {node.gridLoad}%
+              <br />
+              <span style={{ fontSize: "11px", color: "#999" }}>
+                Last updated: {timeAgo(node.timestamp)}
+              </span>
             </Popup>
           </Marker>
         ))}
