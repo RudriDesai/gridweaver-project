@@ -85,8 +85,27 @@ export default function GridMap() {
   }, []);
 
   useEffect(() => {
-    if (lastMessage?.type === "NODE_UPDATE" && Array.isArray(lastMessage.nodes)) {
-      setNodes(lastMessage.nodes);
+    if (
+      lastMessage?.type === "NODE_UPDATE" &&
+      Array.isArray(lastMessage.nodes)
+    ) {
+      setNodes((prev) => {
+        const updated = [...prev];
+
+        lastMessage.nodes.forEach((incoming) => {
+          const index = updated.findIndex(
+            (node) => node.nodeId === incoming.nodeId
+          );
+
+          if (index >= 0) {
+            updated[index] = incoming;
+          } else {
+            updated.push(incoming);
+          }
+        });
+
+        return updated;
+      });
     }
   }, [lastMessage]);
 
