@@ -12,6 +12,9 @@ import org.springframework.statemachine.support.DefaultStateMachineContext;
 import com.gridweaver.statemachine.BatteryEvent;
 import com.gridweaver.statemachine.BatteryState;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 /**
  * Evaluates grid load against thresholds and drives each node's
  * Spring State Machine instance accordingly.
@@ -48,6 +51,18 @@ public class BatteryStateService {
         });
     }
 
+    private final List<StateChangeListener> listeners = new CopyOnWriteArrayList<>();
+
+    public interface StateChangeListener {
+        void onStateChanged(String nodeId,
+                            BatteryState oldState,
+                            BatteryState newState);
+    }
+
+    public void addListener(StateChangeListener listener) {
+        listeners.add(listener);
+    }
+
     /**
      * Evaluates grid load for a node and fires the matching transition event.
      * Returns the resulting BatteryState after evaluation.
@@ -65,7 +80,29 @@ public class BatteryStateService {
         }
 
         BatteryState result = sm.getState().getId();
-        log.debug("[STATE] node={} load={} {} -> {}", nodeId, gridLoad, current, result);
+
+        if (result != current) {
+
+            log.info(
+                    "[STATE-CHANGE] node={} {} -> {}",
+                    nodeId,
+                    current,
+                    result
+            );
+
+            listeners.forEach(listener ->
+                    listener.onStateChanged(nodeId, current, result)
+            );
+        }
+
+        log.debug(
+                "[STATE] node={} load={} {} -> {}",
+                nodeId,
+                gridLoad,
+                current,
+                result
+        );
+
         return result;
     }
 

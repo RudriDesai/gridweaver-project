@@ -77,8 +77,27 @@ export default function GridMap() {
   }, []);
 
   useEffect(() => {
-    if (lastMessage?.type === "NODE_UPDATE" && Array.isArray(lastMessage.nodes)) {
-      setNodes(lastMessage.nodes);
+    if (
+      lastMessage?.type === "NODE_UPDATE" &&
+      Array.isArray(lastMessage.nodes)
+    ) {
+      setNodes((prev) => {
+        const updated = [...prev];
+
+        lastMessage.nodes.forEach((incoming) => {
+          const index = updated.findIndex(
+            (node) => node.nodeId === incoming.nodeId
+          );
+
+          if (index >= 0) {
+            updated[index] = incoming;
+          } else {
+            updated.push(incoming);
+          }
+        });
+
+        return updated;
+      });
     }
   }, [lastMessage]);
 
@@ -130,10 +149,6 @@ export default function GridMap() {
               <br />
               Power: {node.powerOutput} kW
               <br />
-              <strong>{node.nodeId}</strong><br />
-              Status: {node.status}<br />
-              <em style={{ color: "#666" }}>{STATE_DESCRIPTIONS[node.status] || ""}</em><br />
-              Power: {node.powerOutput} kW<br />
               Grid Load: {node.gridLoad}%
             </Popup>
           </Marker>
