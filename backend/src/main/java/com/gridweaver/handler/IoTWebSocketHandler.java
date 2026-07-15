@@ -11,6 +11,9 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gridweaver.service.GridNodeService;
 
 @Component
 public class IoTWebSocketHandler extends TextWebSocketHandler {
@@ -22,11 +25,19 @@ public class IoTWebSocketHandler extends TextWebSocketHandler {
     private final ConcurrentHashMap<String, WebSocketSession> activeSessions =
             new ConcurrentHashMap<>();
 
-    // Metrics
+ // Metrics
     private final AtomicLong totalMessagesReceived = new AtomicLong(0);
     private final AtomicLong totalConnectionsEver = new AtomicLong(0);
     private final AtomicLong failedConnections = new AtomicLong(0);
 
+    // Services
+    private final GridNodeService gridNodeService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    public IoTWebSocketHandler(GridNodeService gridNodeService) {
+        this.gridNodeService = gridNodeService;
+    }
+    
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
 
@@ -42,47 +53,24 @@ public class IoTWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session,
-                                     TextMessage message) throws IOException {
-
-        totalMessagesReceived.incrementAndGet();
-
-        String ack = String.format(
-                "{\"ack\":true,\"sessionId\":\"%s\",\"receivedAt\":%d}",
-                session.getId(),
-                System.currentTimeMillis()
-        );
-
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         try {
+            JsonNode payload = objectMapper.readTree(message.getPayload());
+            String nodeId = payload.path("nodeId").asText(null);
+            double powerOutput = payload.path("powerOutput").asDouble(0.0);
 
-            if (session.isOpen()) {
-                session.sendMessage(new TextMessage(ack));
+            if (nodeId != null) {
+                gridNodeService.applyTelemetry(nodeId, powerOutput);
             }
 
-        } catch (IOException ex) {
-
-            log.warn(
-                    "[SEND-ERROR] session={} error={}",
-                    session.getId(),
-                    ex.getMessage()
+            String ack = String.format(
+                "{\"ack\":true,\"sessionId\":\"%s\",\"nodeId\":\"%s\"}",
+                session.getId(), nodeId
             );
-
-            failedConnections.incrementAndGet();
-
-            try {
-                if (session.isOpen()) {
-                    session.close();
-                }
-            } catch (IOException ignored) {
-            }
+            session.sendMessage(new TextMessage(ack));
+        } catch (Exception e) {
+            log.warn("[WS-ERROR] Failed to process telemetry: {}", e.getMessage());
         }
-
-        log.debug(
-                "[MSG] session={} payload={} totalMsgs={}",
-                session.getId(),
-                message.getPayload(),
-                totalMessagesReceived.get()
-        );
     }
 
     @Override

@@ -79,6 +79,33 @@ public class GridNodeService {
     public int getNodeCount() {
         return nodeRegistry.size();
     }
+    
+    /**
+     * Applies incoming telemetry from a simulated/real IoT device to the
+     * matching node: recomputes grid load, re-evaluates the state machine,
+     * and updates the registry. Creates the node on first contact if unseen.
+     */
+    public GridNode applyTelemetry(String nodeId, double powerOutput) {
+        GridNode node = nodeRegistry.get(nodeId);
+
+        // Derive a synthetic grid load from power output (0-100 scale)
+        double gridLoad = Math.min(100.0, Math.round(powerOutput * 10.0) / 10.0);
+        String newStatus = batteryStateService.evaluate(nodeId, gridLoad).name();
+
+        if (node == null) {
+            node = new GridNode(nodeId, 51.505, -0.09, newStatus, powerOutput, gridLoad);
+            nodeRegistry.put(nodeId, node);
+            log.info("[TELEMETRY] Registered new node from telemetry: {}", nodeId);
+        } else {
+            node.setPowerOutput(powerOutput);
+            node.setGridLoad(gridLoad);
+            node.setStatus(newStatus);
+            node.setTimestamp(System.currentTimeMillis());
+        }
+
+        log.debug("[TELEMETRY] node={} load={} -> status={}", nodeId, gridLoad, newStatus);
+        return node;
+    }
 
     // ── Mock Data Initialization ──────────────────────
 
