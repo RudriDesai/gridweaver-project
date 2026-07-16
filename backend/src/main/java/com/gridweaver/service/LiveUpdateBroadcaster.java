@@ -35,11 +35,6 @@ public class LiveUpdateBroadcaster {
         this.batteryStateService = batteryStateService;
     }
 
-    /**
-     * Day 3:
-     * Register a listener that immediately broadcasts
-     * a NODE_UPDATE whenever a battery state changes.
-     */
     @PostConstruct
     public void registerStateChangeListener() {
 
@@ -54,10 +49,7 @@ public class LiveUpdateBroadcaster {
                 }
 
                 String payload = objectMapper.writeValueAsString(
-                        new NodeUpdateMessage(
-                                "NODE_UPDATE",
-                                List.of(node)
-                        )
+                        new NodeUpdateMessage("NODE_UPDATE", "PARTIAL", List.of(node))
                 );
 
                 webSocketHandler.broadcastToAll(payload);
@@ -76,11 +68,6 @@ public class LiveUpdateBroadcaster {
         });
     }
 
-    /**
-     * Day 2:
-     * Keep periodic full synchronization so
-     * newly connected clients receive all nodes.
-     */
     @Scheduled(fixedRate = 2000)
     public void broadcastNodeUpdates() {
 
@@ -99,6 +86,7 @@ public class LiveUpdateBroadcaster {
             String payload = objectMapper.writeValueAsString(
                     new NodeUpdateMessage(
                             "NODE_UPDATE",
+                            "FULL",
                             nodes
                     )
             );
@@ -113,6 +101,7 @@ public class LiveUpdateBroadcaster {
 
     private record NodeUpdateMessage(
             String type,
+            String updateType,
             List<GridNode> nodes
     ) {
     }

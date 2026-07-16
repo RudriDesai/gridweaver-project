@@ -4,6 +4,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { fetchAllNodes, initMockNodes } from "../services/api";
 import { useWebSocket } from "../hooks/useWebSocket";
+import MapLegend from "./MapLegend";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -23,7 +24,6 @@ const STATUS_COLORS = {
   FAULT: "#ef4444",
 };
 
-// Day 2 (A6) — human-readable description per battery state
 const STATE_DESCRIPTIONS = {
   CHARGING: "Battery is charging (low grid load)",
   DISCHARGING: "Battery is discharging (high grid load)",
@@ -31,19 +31,29 @@ const STATE_DESCRIPTIONS = {
   FAULT: "Battery fault detected",
 };
 
-function statusIcon(status) {
+function statusIcon(status, flashing) {
   const color = STATUS_COLORS[status] || "#6b7280";
 
+  const ring = flashing
+    ? `box-shadow:0 0 0 4px ${color}55,0 0 6px rgba(0,0,0,.4);`
+    : `box-shadow:0 0 4px rgba(0,0,0,.4);`;
+
   return L.divIcon({
-    className: "custom-node-marker",
-    html: `<div style="
-      background:${color};
-      width:16px;
-      height:16px;
-      border-radius:50%;
-      border:2px solid white;
-      box-shadow:0 0 4px rgba(0,0,0,0.4);
-    "></div>`,
+    className: flashing
+      ? "custom-node-marker flash"
+      : "custom-node-marker",
+    html: `
+      <div
+        style="
+          background:${color};
+          width:16px;
+          height:16px;
+          border-radius:50%;
+          border:2px solid white;
+          ${ring}
+        ">
+      </div>
+    `,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
   });
@@ -58,12 +68,13 @@ function timeAgo(timestamp) {
 }
 
 export default function GridMap() {
-  const { connected, lastMessage } = useWebSocket();
+  const {connected,lastMessage,reconnectAttempts} = useWebSocket();
 
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [flashingNodes, setFlashingNodes] = useState(new Set());
   const loadNodes = async () => {
     setLoading(true);
     setError(null);
@@ -86,9 +97,18 @@ export default function GridMap() {
 
   useEffect(() => {
     if (
-      lastMessage?.type === "NODE_UPDATE" &&
-      Array.isArray(lastMessage.nodes)
+      lastMessage?.type !== "NODE_UPDATE" ||
+      !Array.isArray(lastMessage.nodes)
     ) {
+      return;
+    }
+
+    if (lastMessage.updateType === "FULL") {
+      setNodes(lastMessage.nodes);
+      return;
+    }
+
+    if (lastMessage.updateType === "PARTIAL") {
       setNodes((prev) => {
         const updated = [...prev];
 
@@ -106,6 +126,20 @@ export default function GridMap() {
 
         return updated;
       });
+
+      const ids = lastMessage.nodes.map((n) => n.nodeId);
+
+      setFlashingNodes((prev) => new Set([...prev, ...ids]));
+
+      setTimeout(() => {
+        setFlashingNodes((prev) => {
+          const next = new Set(prev);
+
+          ids.forEach((id) => next.delete(id));
+
+          return next;
+        });
+      }, 1200);
     }
   }, [lastMessage]);
 
@@ -114,7 +148,11 @@ export default function GridMap() {
   }
 
   if (error) {
-    return <div className="status-banner error">Error: {error}</div>;
+    return (
+      <div className="status-banner error">
+        Error: {error}
+      </div>
+    );
   }
 
   return (
@@ -124,48 +162,72 @@ export default function GridMap() {
 
         <span>{nodes.length} nodes loaded</span>
 
-        <span style={{ marginLeft: "15px", fontWeight: "bold" }}>
-          WebSocket: {connected ? "🟢 Connected" : "🔴 Disconnected"}
+        <span
+          style={{
+            marginLeft: "15px",
+            fontWeight: "bold",
+          }}
+        >
+          WebSocket: {connected ? "🟢 Connected": `🔴 Reconnecting... (attempt ${reconnectAttempts})`}
         </span>
 
         <button onClick={loadNodes}>Refresh</button>
       </div>
 
-      <MapContainer
-        center={[51.505, -0.09]}
-        zoom={12}
-        style={{ height: "600px", width: "100%" }}
-      >
-        <TileLayer
-          attribution="&copy; OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {nodes.map((node) => (
-          <Marker
-            key={node.nodeId}
-            position={[node.latitude, node.longitude]}
-            icon={statusIcon(node.status)}
-          >
-            <Popup>
-              <strong>{node.nodeId}</strong>
-              <br />
-              Status: {node.status}
-              <br />
-              <em style={{ color: "#666" }}>
-                {STATE_DESCRIPTIONS[node.status] || ""}
-              </em>
-              <br />
-              Power: {node.powerOutput} kW
-              <br />
-              Grid Load: {node.gridLoad}%
-              <br />
-              <span style={{ fontSize: "11px", color: "#999" }}>
-                Last updated: {timeAgo(node.timestamp)}
-              </span>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <div style={{ position: "relative" }}>
+
+        <MapLegend />
+
+        <MapContainer
+          center={[51.505, -0.09]}
+          zoom={12}
+          style={{
+            height: "600px",
+            width: "100%",
+          }}
+        >
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          {nodes.map((node) => (
+            <Marker
+              key={node.nodeId}
+              position={[node.latitude, node.longitude]}
+              icon={statusIcon(
+                node.status,
+                flashingNodes.has(node.nodeId)
+              )}
+            >
+              <Popup>
+                <strong>{node.nodeId}</strong>
+                <br />
+                Status: {node.status}
+                <br />
+                <em style={{ color: "#666" }}>
+                  {STATE_DESCRIPTIONS[node.status] || ""}
+                </em>
+                <br />
+                Power: {node.powerOutput} kW
+                <br />
+                Grid Load: {node.gridLoad}%
+                <br />
+
+                <span
+                  style={{
+                    fontSize: "11px",
+                    color: "#999",
+                  }}
+                >
+                  Last updated: {timeAgo(node.timestamp)}
+                </span>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+
+      </div>
     </div>
   );
 }

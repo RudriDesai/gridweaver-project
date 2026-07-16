@@ -6,6 +6,9 @@ const RECONNECT_DELAY_MS = 2000;
 export function useWebSocket() {
   const [connected, setConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState(null);
+
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
   const manuallyClosedRef = useRef(false);
@@ -16,6 +19,9 @@ export function useWebSocket() {
 
     ws.onopen = () => {
       setConnected(true);
+
+      setReconnectAttempts(0);
+
       console.log("[WS] connected");
     };
 
@@ -29,9 +35,21 @@ export function useWebSocket() {
 
     ws.onclose = () => {
       setConnected(false);
-      console.log("[WS] disconnected — retrying in", RECONNECT_DELAY_MS, "ms");
+
+      console.log(
+        "[WS] disconnected — retrying in",
+        RECONNECT_DELAY_MS,
+        "ms"
+      );
+
       if (!manuallyClosedRef.current) {
-        reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY_MS);
+
+        setReconnectAttempts((count) => count + 1);
+
+        reconnectTimer.current = setTimeout(
+          connect,
+          RECONNECT_DELAY_MS
+        );
       }
     };
 
@@ -45,7 +63,6 @@ export function useWebSocket() {
     manuallyClosedRef.current = false;
     connect();
 
-
     return () => {
       manuallyClosedRef.current = true;
       clearTimeout(reconnectTimer.current);
@@ -55,9 +72,13 @@ export function useWebSocket() {
 
   const send = useCallback((data) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(typeof data === "string" ? data : JSON.stringify(data));
+      wsRef.current.send(
+        typeof data === "string"
+          ? data
+          : JSON.stringify(data)
+      );
     }
   }, []);
 
-  return { connected, lastMessage, send };
+  return {connected,lastMessage,send,reconnectAttempts};
 }
