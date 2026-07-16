@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { fetchAllNodes, initMockNodes } from "../services/api";
+import {
+  fetchAllNodes,
+  initMockNodes,
+  fetchNodeHistory,
+} from "../services/api";
 import { useWebSocket } from "../hooks/useWebSocket";
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -64,6 +68,9 @@ export default function GridMap() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Store latest audit history for each node
+  const [history, setHistory] = useState({});
+
   const loadNodes = async () => {
     setLoading(true);
     setError(null);
@@ -79,6 +86,17 @@ export default function GridMap() {
       setLoading(false);
     }
   };
+
+  async function loadHistoryFor(nodeId) {
+    try {
+      const records = await fetchNodeHistory(nodeId, 1);
+      if (records.length > 0) {
+        setHistory((prev) => ({ ...prev, [nodeId]: records[0] }));
+      }
+    } catch {
+      // non-critical, ignore
+    }
+  }
 
   useEffect(() => {
     loadNodes();
@@ -146,7 +164,10 @@ export default function GridMap() {
             position={[node.latitude, node.longitude]}
             icon={statusIcon(node.status)}
           >
-            <Popup>
+            <Popup
+              eventHandlers={{
+                add: () => loadHistoryFor(node.nodeId),
+              }}>
               <strong>{node.nodeId}</strong>
               <br />
               Status: {node.status}
@@ -162,6 +183,14 @@ export default function GridMap() {
               <span style={{ fontSize: "11px", color: "#999" }}>
                 Last updated: {timeAgo(node.timestamp)}
               </span>
+              {history[node.nodeId] && (
+                <>
+                  <br />
+                  <span style={{ fontSize: "11px", color: "#3b82f6" }}>
+                    Last transition: {history[node.nodeId].fromState} → {history[node.nodeId].toState}
+                  </span>
+                </>
+              )}
             </Popup>
           </Marker>
         ))}

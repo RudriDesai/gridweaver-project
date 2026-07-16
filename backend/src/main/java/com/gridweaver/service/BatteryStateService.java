@@ -1,6 +1,7 @@
 package com.gridweaver.service;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +13,14 @@ import org.springframework.statemachine.support.DefaultStateMachineContext;
 import com.gridweaver.statemachine.BatteryEvent;
 import com.gridweaver.statemachine.BatteryState;
 
+import jakarta.annotation.PostConstruct;
+
+import com.gridweaver.model.StateTransitionRecord;
+
+import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 /**
  * Evaluates grid load against thresholds and drives each node's
@@ -32,6 +39,8 @@ public class BatteryStateService {
 
     private static final double DISCHARGE_THRESHOLD = 80.0;
     private static final double CHARGE_THRESHOLD = 20.0;
+    private final Deque<StateTransitionRecord> history = new ConcurrentLinkedDeque<>();
+    private static final int MAX_HISTORY = 500; // cap memory usage
 
     private final StateMachineFactory<BatteryState, BatteryEvent> stateMachineFactory;
 
@@ -122,5 +131,26 @@ public class BatteryStateService {
 
     public BatteryState getCurrentState(String nodeId) {
         return machineFor(nodeId).getState().getId();
+    }
+ 
+    @PostConstruct
+    public void recordOwnTransitions() {
+        addListener((nodeId, oldState, newState) -> {
+            history.addFirst(new StateTransitionRecord(nodeId, oldState.name(), newState.name()));
+            while (history.size() > MAX_HISTORY) {
+                history.removeLast();
+            }
+        });
+    }
+
+    public List<StateTransitionRecord> getRecentHistory(int limit) {
+        return history.stream().limit(limit).collect(Collectors.toList());
+    }
+
+    public List<StateTransitionRecord> getHistoryForNode(String nodeId, int limit) {
+        return history.stream()
+                .filter(r -> r.getNodeId().equals(nodeId))
+                .limit(limit)
+                .collect(Collectors.toList());
     }
 }
