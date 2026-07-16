@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { fetchAllNodes, initMockNodes } from "../services/api";
+import {
+  fetchAllNodes,
+  initMockNodes,
+  fetchNodeHistory,
+} from "../services/api";
 import { useWebSocket } from "../hooks/useWebSocket";
 import MapLegend from "./MapLegend";
 
@@ -16,7 +20,6 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Color-code markers by node status
 const STATUS_COLORS = {
   CHARGING: "#22c55e",
   DISCHARGING: "#f97316",
@@ -61,28 +64,39 @@ function statusIcon(status, flashing) {
 
 function timeAgo(timestamp) {
   if (!timestamp) return "unknown";
+
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
   if (seconds < 5) return "just now";
   if (seconds < 60) return `${seconds}s ago`;
+
   return `${Math.floor(seconds / 60)}m ago`;
 }
 
 export default function GridMap() {
-  const {connected,lastMessage,reconnectAttempts} = useWebSocket();
+  const { connected, lastMessage, reconnectAttempts } = useWebSocket();
 
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Member A
+  const [history, setHistory] = useState({});
+
+  // Member B
   const [flashingNodes, setFlashingNodes] = useState(new Set());
+
   const loadNodes = async () => {
     setLoading(true);
     setError(null);
+
     try {
       let data = await fetchAllNodes();
+
       if (data.length === 0) {
         data = await initMockNodes(20);
       }
+
       setNodes(data);
     } catch (err) {
       setError(err.message);
@@ -90,6 +104,21 @@ export default function GridMap() {
       setLoading(false);
     }
   };
+
+  async function loadHistoryFor(nodeId) {
+    try {
+      const records = await fetchNodeHistory(nodeId, 1);
+
+      if (records.length > 0) {
+        setHistory((prev) => ({
+          ...prev,
+          [nodeId]: records[0],
+        }));
+      }
+    } catch {
+      // ignore history errors
+    }
+  }
 
   useEffect(() => {
     loadNodes();
@@ -168,14 +197,16 @@ export default function GridMap() {
             fontWeight: "bold",
           }}
         >
-          WebSocket: {connected ? "🟢 Connected": `🔴 Reconnecting... (attempt ${reconnectAttempts})`}
+          WebSocket:{" "}
+          {connected
+            ? "🟢 Connected"
+            : `🔴 Reconnecting... (attempt ${reconnectAttempts})`}
         </span>
 
         <button onClick={loadNodes}>Refresh</button>
       </div>
 
       <div style={{ position: "relative" }}>
-
         <MapLegend />
 
         <MapContainer
@@ -200,18 +231,31 @@ export default function GridMap() {
                 flashingNodes.has(node.nodeId)
               )}
             >
-              <Popup>
+              <Popup
+                eventHandlers={{
+                  add: () => loadHistoryFor(node.nodeId),
+                }}
+              >
                 <strong>{node.nodeId}</strong>
+
                 <br />
+
                 Status: {node.status}
+
                 <br />
+
                 <em style={{ color: "#666" }}>
                   {STATE_DESCRIPTIONS[node.status] || ""}
                 </em>
+
                 <br />
+
                 Power: {node.powerOutput} kW
+
                 <br />
+
                 Grid Load: {node.gridLoad}%
+
                 <br />
 
                 <span
@@ -222,11 +266,26 @@ export default function GridMap() {
                 >
                   Last updated: {timeAgo(node.timestamp)}
                 </span>
+
+                {history[node.nodeId] && (
+                  <>
+                    <br />
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: "#3b82f6",
+                      }}
+                    >
+                      Last transition:{" "}
+                      {history[node.nodeId].fromState} →{" "}
+                      {history[node.nodeId].toState}
+                    </span>
+                  </>
+                )}
               </Popup>
             </Marker>
           ))}
         </MapContainer>
-
       </div>
     </div>
   );

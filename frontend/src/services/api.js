@@ -29,6 +29,11 @@ export async function fetchNodeById(nodeId) {
   return handleResponse(res);
 }
 
+export async function fetchNodeHistory(nodeId, limit = 5) {
+  const res = await fetch(`${BASE_URL}/states/history/${nodeId}?limit=${limit}`);
+  return handleResponse(res);
+}
+
 export async function fetchHealth() {
   const res = await fetch(`${BASE_URL}/health`);
   return handleResponse(res);
