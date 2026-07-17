@@ -93,9 +93,27 @@ public class GridNodeService {
         String newStatus = batteryStateService.evaluate(nodeId, gridLoad).name();
 
         if (node == null) {
-            node = new GridNode(nodeId, 51.505, -0.09, newStatus, powerOutput, gridLoad);
+
+            // Spread new nodes around the map instead of placing them all
+            // at exactly the same coordinates.
+            double baseLat = 51.505;
+            double baseLng = -0.09;
+
+            double lat = baseLat + (Math.random() * 0.2 - 0.1);
+            double lng = baseLng + (Math.random() * 0.2 - 0.1);
+
+            node = new GridNode(
+                    nodeId,
+                    lat,
+                    lng,
+                    newStatus,
+                    powerOutput,
+                    gridLoad
+            );
+
             nodeRegistry.put(nodeId, node);
             log.info("[TELEMETRY] Registered new node from telemetry: {}", nodeId);
+
         } else {
             node.setPowerOutput(powerOutput);
             node.setGridLoad(gridLoad);
