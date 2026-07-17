@@ -1,6 +1,9 @@
 package com.gridweaver.service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import jakarta.annotation.PostConstruct;
 
@@ -25,6 +28,10 @@ public class LiveUpdateBroadcaster {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+
+    private final ConcurrentLinkedQueue<GridNode> pendingChanges =
+            new ConcurrentLinkedQueue<>();
+
     public LiveUpdateBroadcaster(
             GridNodeService gridNodeService,
             IoTWebSocketHandler webSocketHandler,
@@ -40,32 +47,74 @@ public class LiveUpdateBroadcaster {
 
         batteryStateService.addListener((nodeId, oldState, newState) -> {
 
-            try {
+            GridNode node = gridNodeService.getNodeById(nodeId);
 
-                GridNode node = gridNodeService.getNodeById(nodeId);
-
-                if (node == null) {
-                    return;
-                }
-
-                String payload = objectMapper.writeValueAsString(
-                        new NodeUpdateMessage("NODE_UPDATE", "PARTIAL", List.of(node))
-                );
-
-                webSocketHandler.broadcastToAll(payload);
+            if (node != null) {
+                pendingChanges.add(node);
 
                 log.info(
-                        "[LIVE-UPDATE] {} : {} -> {}",
+                        "[QUEUE] {} : {} -> {}",
                         nodeId,
                         oldState,
                         newState
                 );
-
-            } catch (Exception e) {
-
-                log.warn("[BROADCAST-ERROR] on state change: {}", e.getMessage());
             }
         });
+    }
+
+    /**
+     * Day 5
+     * Flush queued updates every 300ms instead of
+     * sending one WebSocket frame per node.
+     */
+    @Scheduled(fixedRate = 300)
+    public void flushPendingChanges() {
+
+        if (pendingChanges.isEmpty()) {
+            return;
+        }
+
+        if (webSocketHandler.getActiveConnectionCount() == 0) {
+            pendingChanges.clear();
+            return;
+        }
+
+        LinkedHashMap<String, GridNode> deduplicated =
+                new LinkedHashMap<>();
+
+        GridNode node;
+
+        while ((node = pendingChanges.poll()) != null) {
+            deduplicated.put(node.getNodeId(), node);
+        }
+
+        List<GridNode> batch =
+                new ArrayList<>(deduplicated.values());
+
+        try {
+
+            String payload = objectMapper.writeValueAsString(
+                    new NodeUpdateMessage(
+                            "NODE_UPDATE",
+                            "PARTIAL",
+                            batch
+                    )
+            );
+
+            webSocketHandler.broadcastToAll(payload);
+
+            log.info(
+                    "[BATCH] Broadcast {} node updates",
+                    batch.size()
+            );
+
+        } catch (Exception e) {
+
+            log.warn(
+                    "[BROADCAST-ERROR] partial batch: {}",
+                    e.getMessage()
+            );
+        }
     }
 
     @Scheduled(fixedRate = 2000)
@@ -95,7 +144,10 @@ public class LiveUpdateBroadcaster {
 
         } catch (Exception e) {
 
-            log.warn("[BROADCAST-ERROR] {}", e.getMessage());
+            log.warn(
+                    "[BROADCAST-ERROR] full sync: {}",
+                    e.getMessage()
+            );
         }
     }
 
