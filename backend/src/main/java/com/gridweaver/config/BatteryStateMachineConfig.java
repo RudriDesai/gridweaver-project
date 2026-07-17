@@ -24,28 +24,68 @@ public class BatteryStateMachineConfig
     }
 
     @Override
-    public void configure(StateMachineTransitionConfigurer<BatteryState, BatteryEvent> transitions)
+    public void configure(
+            StateMachineTransitionConfigurer<BatteryState, BatteryEvent> transitions)
             throws Exception {
+
         transitions
-            .withExternal().source(BatteryState.IDLE).target(BatteryState.CHARGING)
-                .event(BatteryEvent.START_CHARGING).and()
-            .withExternal().source(BatteryState.CHARGING).target(BatteryState.IDLE)
-                .event(BatteryEvent.STOP_CHARGING).and()
-            .withExternal().source(BatteryState.IDLE).target(BatteryState.DISCHARGING)
-                .event(BatteryEvent.START_DISCHARGING).and()
-            .withExternal().source(BatteryState.DISCHARGING).target(BatteryState.IDLE)
-                .event(BatteryEvent.STOP_DISCHARGING).and()
-            .withExternal().source(BatteryState.DISCHARGING).target(BatteryState.CHARGING)
-                .event(BatteryEvent.START_CHARGING).and()
+            .withExternal()
+                .source(BatteryState.IDLE)
+                .target(BatteryState.CHARGING)
+                .event(BatteryEvent.START_CHARGING)
+            .and()
+
+            .withExternal()
+                .source(BatteryState.CHARGING)
+                .target(BatteryState.IDLE)
+                .event(BatteryEvent.STOP_CHARGING)
+            .and()
+
+            .withExternal()
+                .source(BatteryState.IDLE)
+                .target(BatteryState.DISCHARGING)
+                .event(BatteryEvent.START_DISCHARGING)
+            .and()
+
+            .withExternal()
+                .source(BatteryState.DISCHARGING)
+                .target(BatteryState.IDLE)
+                .event(BatteryEvent.STOP_DISCHARGING)
+            .and()
+
+            .withExternal()
+                .source(BatteryState.DISCHARGING)
+                .target(BatteryState.CHARGING)
+                .event(BatteryEvent.START_CHARGING)
+            .and()
+
             .withExternal()
                 .source(BatteryState.CHARGING)
                 .target(BatteryState.DISCHARGING)
-                .event(BatteryEvent.START_DISCHARGING).and()
-            .withExternal().source(BatteryState.CHARGING).target(BatteryState.FAULT)
-                .event(BatteryEvent.FAULT_DETECTED).and()
-            .withExternal().source(BatteryState.DISCHARGING).target(BatteryState.FAULT)
-                .event(BatteryEvent.FAULT_DETECTED).and()
-            .withExternal().source(BatteryState.FAULT).target(BatteryState.IDLE)
+                .event(BatteryEvent.START_DISCHARGING)
+            .and()
+
+            .withExternal()
+                .source(BatteryState.CHARGING)
+                .target(BatteryState.FAULT)
+                .event(BatteryEvent.FAULT_DETECTED)
+            .and()
+
+            .withExternal()
+                .source(BatteryState.DISCHARGING)
+                .target(BatteryState.FAULT)
+                .event(BatteryEvent.FAULT_DETECTED)
+            .and()
+
+            .withExternal()
+                .source(BatteryState.IDLE)
+                .target(BatteryState.FAULT)
+                .event(BatteryEvent.FAULT_DETECTED)
+            .and()
+
+            .withExternal()
+                .source(BatteryState.FAULT)
+                .target(BatteryState.IDLE)
                 .event(BatteryEvent.FAULT_CLEARED);
     }
 }
