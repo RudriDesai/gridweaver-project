@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -86,6 +86,9 @@ export default function GridMap() {
   // Member B
   const [flashingNodes, setFlashingNodes] = useState(new Set());
 
+  const updateBuffer = useRef([]);
+  const flushTimer = useRef(null);
+
   const loadNodes = async () => {
     setLoading(true);
     setError(null);
@@ -132,46 +135,72 @@ export default function GridMap() {
       return;
     }
 
+    // FULL sync remains immediate
     if (lastMessage.updateType === "FULL") {
       setNodes(lastMessage.nodes);
       return;
     }
 
-    if (lastMessage.updateType === "PARTIAL") {
-      setNodes((prev) => {
-        const updated = [...prev];
+    // Buffer PARTIAL updates
+    updateBuffer.current.push(...lastMessage.nodes);
 
-        lastMessage.nodes.forEach((incoming) => {
-          const index = updated.findIndex(
-            (node) => node.nodeId === incoming.nodeId
-          );
+    if (!flushTimer.current) {
+      flushTimer.current = setTimeout(() => {
+        const incomingBatch = updateBuffer.current;
 
-          if (index >= 0) {
-            updated[index] = incoming;
-          } else {
-            updated.push(incoming);
+        updateBuffer.current = [];
+        flushTimer.current = null;
+
+        setNodes((prev) => {
+          const updated = [...prev];
+          const changedIds = [];
+
+          incomingBatch.forEach((incoming) => {
+            const index = updated.findIndex(
+              (node) => node.nodeId === incoming.nodeId
+            );
+
+            if (index >= 0) {
+              if (updated[index].status !== incoming.status) {
+                changedIds.push(incoming.nodeId);
+              }
+
+              updated[index] = incoming;
+            } else {
+              updated.push(incoming);
+              changedIds.push(incoming.nodeId);
+            }
+          });
+
+          if (changedIds.length > 0) {
+            setFlashingNodes((prev) => {
+              return new Set([...prev, ...changedIds]);
+            });
+
+            setTimeout(() => {
+              setFlashingNodes((prev) => {
+                const next = new Set(prev);
+
+                changedIds.forEach((id) => next.delete(id));
+
+                return next;
+              });
+            }, 1500);
           }
+
+          return updated;
         });
-
-        return updated;
-      });
-
-      const ids = lastMessage.nodes.map((n) => n.nodeId);
-
-      setFlashingNodes((prev) => new Set([...prev, ...ids]));
-
-      setTimeout(() => {
-        setFlashingNodes((prev) => {
-          const next = new Set(prev);
-
-          ids.forEach((id) => next.delete(id));
-
-          return next;
-        });
-      }, 1200);
+      }, 150);
     }
   }, [lastMessage]);
 
+  useEffect(() => {
+    return () => {
+      if (flushTimer.current) {
+        clearTimeout(flushTimer.current);
+      }
+    };
+  }, []);
   if (loading) {
     return <div className="status-banner">Loading grid nodes...</div>;
   }

@@ -53,9 +53,15 @@ public class IoTWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+
         try {
+
+            // Increment metric for every received message
+            totalMessagesReceived.incrementAndGet();
+
             JsonNode payload = objectMapper.readTree(message.getPayload());
+
             String nodeId = payload.path("nodeId").asText(null);
             double powerOutput = payload.path("powerOutput").asDouble(0.0);
 
@@ -64,10 +70,15 @@ public class IoTWebSocketHandler extends TextWebSocketHandler {
             }
 
             String ack = String.format(
-                "{\"ack\":true,\"sessionId\":\"%s\",\"nodeId\":\"%s\"}",
-                session.getId(), nodeId
+                    "{\"ack\":true,\"sessionId\":\"%s\",\"nodeId\":\"%s\"}",
+                    session.getId(),
+                    nodeId
             );
+
             session.sendMessage(new TextMessage(ack));
+
+            log.info("[WS] Messages Received = {}", totalMessagesReceived.get());
+
         } catch (Exception e) {
             log.warn("[WS-ERROR] Failed to process telemetry: {}", e.getMessage());
         }
