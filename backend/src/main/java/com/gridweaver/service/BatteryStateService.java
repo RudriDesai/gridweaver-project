@@ -76,56 +76,57 @@ public class BatteryStateService {
      * Evaluates grid load for a node and fires the matching transition event.
      * Returns the resulting BatteryState after evaluation.
      */
+ // updated evaluate() — validates before firing
     public BatteryState evaluate(String nodeId, double gridLoad) {
         StateMachine<BatteryState, BatteryEvent> sm = machineFor(nodeId);
         BatteryState current = sm.getState().getId();
 
         BatteryEvent event = resolveEvent(current, gridLoad);
-        if (event != null) {
+        if (event != null && isValidTransition(current, event)) {
             sm.sendEvent(reactor.core.publisher.Mono.just(
-                    org.springframework.messaging.support.MessageBuilder
-                        .withPayload(event).build()
+                    org.springframework.messaging.support.MessageBuilder.withPayload(event).build()
             )).blockLast();
+        } else if (event != null) {
+            log.warn("[STATE-REJECTED] node={} tried {} from {} — invalid transition", nodeId, event, current);
         }
 
         BatteryState result = sm.getState().getId();
-
         if (result != current) {
-
-            log.info(
-                    "[STATE-CHANGE] node={} {} -> {}",
-                    nodeId,
-                    current,
-                    result
-            );
-
-            listeners.forEach(listener ->
-                    listener.onStateChanged(nodeId, current, result)
-            );
+            listeners.forEach(l -> l.onStateChanged(nodeId, current, result));
         }
-
-        log.debug(
-                "[STATE] node={} load={} {} -> {}",
-                nodeId,
-                gridLoad,
-                current,
-                result
-        );
-
         return result;
     }
 
     private BatteryEvent resolveEvent(BatteryState current, double gridLoad) {
+
+        // Invalid sensor reading
+        if (Double.isNaN(gridLoad) || gridLoad < 0 || gridLoad > 100) {
+            return current == BatteryState.FAULT
+                    ? null
+                    : BatteryEvent.FAULT_DETECTED;
+        }
+
+        // Recover from fault
+        if (current == BatteryState.FAULT) {
+            return BatteryEvent.FAULT_CLEARED;
+        }
+
         if (gridLoad > DISCHARGE_THRESHOLD && current != BatteryState.DISCHARGING) {
             return BatteryEvent.START_DISCHARGING;
         }
+
         if (gridLoad < CHARGE_THRESHOLD && current != BatteryState.CHARGING) {
             return BatteryEvent.START_CHARGING;
         }
+
         if (gridLoad >= CHARGE_THRESHOLD && gridLoad <= DISCHARGE_THRESHOLD) {
-            if (current == BatteryState.CHARGING) return BatteryEvent.STOP_CHARGING;
-            if (current == BatteryState.DISCHARGING) return BatteryEvent.STOP_DISCHARGING;
+            if (current == BatteryState.CHARGING)
+                return BatteryEvent.STOP_CHARGING;
+
+            if (current == BatteryState.DISCHARGING)
+                return BatteryEvent.STOP_DISCHARGING;
         }
+
         return null;
     }
 
@@ -153,4 +154,27 @@ public class BatteryStateService {
                 .limit(limit)
                 .collect(Collectors.toList());
     }
-}
+    /**
+     * Guards against firing events the current state doesn't support.
+     * Returns false (and skips the event) if invalid, instead of letting
+     * Spring State Machine silently no-op.
+     */
+    private boolean isValidTransition(BatteryState from, BatteryEvent event) {
+        return switch (from) {
+            case IDLE ->
+                event == BatteryEvent.START_CHARGING
+                || event == BatteryEvent.START_DISCHARGING
+                || event == BatteryEvent.FAULT_DETECTED;
+
+            case CHARGING ->
+                event == BatteryEvent.STOP_CHARGING
+                || event == BatteryEvent.FAULT_DETECTED;
+
+            case DISCHARGING ->
+                event == BatteryEvent.STOP_DISCHARGING
+                || event == BatteryEvent.FAULT_DETECTED;
+
+            case FAULT ->
+                event == BatteryEvent.FAULT_CLEARED;
+        };
+    }}

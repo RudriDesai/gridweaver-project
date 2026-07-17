@@ -57,4 +57,10 @@ public class SimulatorController {
     public ResponseEntity<SimulationStatus> status() {
         return ResponseEntity.ok(simulatorService.getStatus());
     }
+    
+    @PostMapping("/storm")
+    public ResponseEntity<String> triggerStorm(@RequestParam(defaultValue = "50") int nodeCount) {
+        simulatorService.triggerStormScenario(nodeCount);
+        return ResponseEntity.ok("Storm scenario triggered for " + nodeCount + " nodes");
+    }
 }

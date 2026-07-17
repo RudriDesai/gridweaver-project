@@ -105,6 +105,13 @@ export default function GridMap() {
     }
   };
 
+  async function triggerStorm() {
+    try {
+      await fetch("http://localhost:8080/api/simulator/storm?nodeCount=50", { method: "POST" });
+    } catch {
+      // non-critical for demo purposes
+    }
+  }
   async function loadHistoryFor(nodeId) {
     try {
       const records = await fetchNodeHistory(nodeId, 1);
@@ -204,6 +211,9 @@ export default function GridMap() {
         </span>
 
         <button onClick={loadNodes}>Refresh</button>
+        <button onClick={triggerStorm} style={{ marginLeft: "10px", background: "#ef4444", color: "white" }}>
+          ⛈ Trigger Storm
+        </button>
       </div>
 
       <div style={{ position: "relative" }}>
