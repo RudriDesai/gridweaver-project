@@ -1,6 +1,8 @@
 package com.gridweaver.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.web.bind.annotation.*;
 
@@ -9,7 +11,7 @@ import com.gridweaver.service.BatteryStateService;
 
 @RestController
 @RequestMapping("/api/states")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "${gridweaver.cors.allowed-origin}")
 public class StateHistoryController {
 
     private final BatteryStateService batteryStateService;
@@ -29,5 +31,14 @@ public class StateHistoryController {
             @PathVariable String nodeId,
             @RequestParam(defaultValue = "20") int limit) {
         return batteryStateService.getHistoryForNode(nodeId, limit);
+    }
+
+    @GetMapping("/metrics")
+    public Map<String, Object> metrics() {
+        Map<String, Object> m = new HashMap<>();
+        m.put("totalEvaluations", batteryStateService.getTotalEvaluations());
+        m.put("rejectedTransitions", batteryStateService.getRejectedTransitions());
+        m.put("activeStateMachines", batteryStateService.getActiveMachineCount());
+        return m;
     }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
@@ -9,6 +9,8 @@ import {
 } from "../services/api";
 import { useWebSocket } from "../hooks/useWebSocket";
 import MapLegend from "./MapLegend";
+import GridNodeMarker from "./GridNodeMarker";
+import TransitionToast from "./TransitionToast";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -19,59 +21,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
-
-const STATUS_COLORS = {
-  CHARGING: "#22c55e",
-  DISCHARGING: "#f97316",
-  IDLE: "#3b82f6",
-  FAULT: "#ef4444",
-};
-
-const STATE_DESCRIPTIONS = {
-  CHARGING: "Battery is charging (low grid load)",
-  DISCHARGING: "Battery is discharging (high grid load)",
-  IDLE: "Battery idle (load within normal range)",
-  FAULT: "Battery fault detected",
-};
-
-function statusIcon(status, flashing) {
-  const color = STATUS_COLORS[status] || "#6b7280";
-
-  const ring = flashing
-    ? `box-shadow:0 0 0 4px ${color}55,0 0 6px rgba(0,0,0,.4);`
-    : `box-shadow:0 0 4px rgba(0,0,0,.4);`;
-
-  return L.divIcon({
-    className: flashing
-      ? "custom-node-marker flash"
-      : "custom-node-marker",
-    html: `
-      <div
-        style="
-          background:${color};
-          width:16px;
-          height:16px;
-          border-radius:50%;
-          border:2px solid white;
-          ${ring}
-        ">
-      </div>
-    `,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-  });
-}
-
-function timeAgo(timestamp) {
-  if (!timestamp) return "unknown";
-
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-
-  if (seconds < 5) return "just now";
-  if (seconds < 60) return `${seconds}s ago`;
-
-  return `${Math.floor(seconds / 60)}m ago`;
-}
 
 export default function GridMap() {
   const { connected, lastMessage, reconnectAttempts } = useWebSocket();
@@ -88,6 +37,8 @@ export default function GridMap() {
 
   const updateBuffer = useRef([]);
   const flushTimer = useRef(null);
+
+  const [toastEvent, setToastEvent] = useState(null);
 
   const loadNodes = async () => {
     setLoading(true);
@@ -146,6 +97,13 @@ export default function GridMap() {
     if (lastMessage.updateType === "FULL") {
       setNodes(lastMessage.nodes);
       return;
+    }
+
+    // Live transition feedback: surface the most recent node in this
+    // batch as a toast for a few seconds.
+    const latest = lastMessage.nodes[lastMessage.nodes.length - 1];
+    if (latest) {
+      setToastEvent({ nodeId: latest.nodeId, status: latest.status, ts: Date.now() });
     }
 
     // Buffer PARTIAL updates
@@ -247,6 +205,7 @@ export default function GridMap() {
 
       <div style={{ position: "relative" }}>
         <MapLegend />
+        <TransitionToast event={toastEvent} />
 
         <MapContainer
           center={[51.505, -0.09]}
@@ -262,67 +221,13 @@ export default function GridMap() {
           />
 
           {nodes.map((node) => (
-            <Marker
+            <GridNodeMarker
               key={node.nodeId}
-              position={[node.latitude, node.longitude]}
-              icon={statusIcon(
-                node.status,
-                flashingNodes.has(node.nodeId)
-              )}
-            >
-              <Popup
-                eventHandlers={{
-                  add: () => loadHistoryFor(node.nodeId),
-                }}
-              >
-                <strong>{node.nodeId}</strong>
-
-                <br />
-
-                Status: {node.status}
-
-                <br />
-
-                <em style={{ color: "#666" }}>
-                  {STATE_DESCRIPTIONS[node.status] || ""}
-                </em>
-
-                <br />
-
-                Power: {node.powerOutput} kW
-
-                <br />
-
-                Grid Load: {node.gridLoad}%
-
-                <br />
-
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: "#999",
-                  }}
-                >
-                  Last updated: {timeAgo(node.timestamp)}
-                </span>
-
-                {history[node.nodeId] && (
-                  <>
-                    <br />
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        color: "#3b82f6",
-                      }}
-                    >
-                      Last transition:{" "}
-                      {history[node.nodeId].fromState} →{" "}
-                      {history[node.nodeId].toState}
-                    </span>
-                  </>
-                )}
-              </Popup>
-            </Marker>
+              node={node}
+              flashing={flashingNodes.has(node.nodeId)}
+              onPopupOpen={loadHistoryFor}
+              lastTransition={history[node.nodeId]}
+            />
           ))}
         </MapContainer>
       </div>
