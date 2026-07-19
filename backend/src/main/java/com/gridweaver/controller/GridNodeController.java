@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +20,9 @@ public class GridNodeController {
     private final GridNodeService gridNodeService;
     private final IoTWebSocketHandler webSocketHandler;
 
+    @Value("${spring.threads.virtual.enabled:false}")
+    private boolean virtualThreadsEnabled;
+
     public GridNodeController(GridNodeService gridNodeService,
                               IoTWebSocketHandler webSocketHandler) {
         this.gridNodeService = gridNodeService;
@@ -27,10 +31,28 @@ public class GridNodeController {
 
     // ── Health Check ────────────────────────────────────
     @GetMapping("/health")
-    public ResponseEntity<Map<String, String>> health() {
-        Map<String, String> response = new HashMap<>();
+    public ResponseEntity<Map<String, Object>> health() {
+        Map<String, Object> response = new HashMap<>();
         response.put("status", "UP");
+        response.put("virtualThreadsEnabled", virtualThreadsEnabled);
         return ResponseEntity.ok(response);
+    }
+
+    // ── Concurrency / Memory Audit (Week 1 Mid-Project Review) ──
+    @GetMapping("/concurrency-audit")
+    public ResponseEntity<Map<String, Object>> concurrencyAudit() {
+        Runtime runtime = Runtime.getRuntime();
+
+        long usedMemoryMb = (runtime.totalMemory() - runtime.freeMemory()) / (1024 * 1024);
+        long maxMemoryMb = runtime.maxMemory() / (1024 * 1024);
+
+        Map<String, Object> audit = new HashMap<>();
+        audit.put("activeWebSocketConnections", webSocketHandler.getActiveConnectionCount());
+        audit.put("liveJvmThreadCount", Thread.activeCount());
+        audit.put("usedHeapMb", usedMemoryMb);
+        audit.put("maxHeapMb", maxMemoryMb);
+        audit.put("virtualThreadsEnabled", virtualThreadsEnabled);
+        return ResponseEntity.ok(audit);
     }
 
     // ── Node APIs ───────────────────────────────────────
