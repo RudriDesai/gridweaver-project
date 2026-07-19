@@ -84,5 +84,22 @@ class BatteryStateServiceTest {
 
         assertEquals(BatteryState.IDLE, result);
     }
+    
+    @Test
+    void shouldTransitionFromChargingToDischarging() {
+
+        // IDLE -> CHARGING
+        batteryStateService.evaluate("NODE-SPIKE", 5.0);
+        assertEquals(
+                BatteryState.CHARGING,
+                batteryStateService.getCurrentState("NODE-SPIKE")
+        );
+
+        // CHARGING -> DISCHARGING
+        BatteryState result =
+                batteryStateService.evaluate("NODE-SPIKE", 95.0);
+
+        assertEquals(BatteryState.DISCHARGING, result);
+    }
 
 }
