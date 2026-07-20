@@ -1,6 +1,8 @@
 import GridMap from "./components/GridMap";
 import StatusSidebar from "./components/StatusSidebar";
 import SimulatorPanel from "./components/SimulatorPanel";
+import KafkaProducerStatus from "./components/kafka/KafkaProducerStatus";
+import KafkaConsumerStatus from "./components/kafka/KafkaConsumerStatus";
 import "./App.css";
 
 function App() {
@@ -13,6 +15,8 @@ function App() {
         <main className="app-main">
           <GridMap />
           <SimulatorPanel />
+          <KafkaProducerStatus/>
+          <KafkaConsumerStatus/>
         </main>
         <StatusSidebar />
       </div>
