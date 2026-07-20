@@ -2,6 +2,7 @@ package com.gridweaver.simulator;
 
 import org.springframework.stereotype.Service;
 
+import com.gridweaver.kafka.producer.TelemetryProducerService;
 import com.gridweaver.service.BatteryStateService;
 import com.gridweaver.service.GridNodeService;
 
@@ -15,12 +16,13 @@ public class SimulatorService {
 
     private static final String DEFAULT_WS_URL = "ws://localhost:8080/ws/iot";
 
-    private final IoTSimulatorClient simulatorClient = new IoTSimulatorClient(DEFAULT_WS_URL);
-    
+    private final IoTSimulatorClient simulatorClient;
     private final GridNodeService gridNodeService;
 
-    public SimulatorService(GridNodeService gridNodeService) {
+    public SimulatorService(GridNodeService gridNodeService,
+                             TelemetryProducerService telemetryProducerService) {
         this.gridNodeService = gridNodeService;
+        this.simulatorClient = new IoTSimulatorClient(DEFAULT_WS_URL, telemetryProducerService);
     }
 
     public void start(int nodeCount, int messagesPerNode) {
@@ -40,7 +42,7 @@ public class SimulatorService {
     public boolean isRunning() {
         return simulatorClient.isRunning();
     }
-    
+
     /**
      * Simulates a storm event: N nodes simultaneously drop power output,
      * driving them toward DISCHARGING/FAULT states at once. Proves the
