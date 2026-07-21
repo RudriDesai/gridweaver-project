@@ -8,6 +8,7 @@ export default function KafkaConsumerStatus() {
   const [lastEvent, setLastEvent] = useState(null);
   const [error, setError] = useState(null);
   const pollRef = useRef(null);
+  const [eventsPerSecond, setEventsPerSecond] = useState(0);
 
   const fetchStatus = async () => {
     try {
@@ -16,6 +17,7 @@ export default function KafkaConsumerStatus() {
       const data = await res.json();
       setStatus(data.status);
       setConsumedCount(data.consumedCount);
+      setEventsPerSecond(data.eventsPerSecond ?? 0);
       setLastEvent(data.lastEvent === 'none' ? null : data.lastEvent);
       setError(null);
     } catch (err) {
@@ -43,6 +45,13 @@ export default function KafkaConsumerStatus() {
         <div className="kafka-metric">
           <span className="kafka-metric-value">{consumedCount}</span>
           <span className="kafka-metric-label">Consumed</span>
+        </div>
+
+        <div className="kafka-metric">
+          <span className="kafka-metric-value">
+            {eventsPerSecond.toFixed(1)}
+          </span>
+          <span className="kafka-metric-label">Events/sec</span>
         </div>
       </div>
 

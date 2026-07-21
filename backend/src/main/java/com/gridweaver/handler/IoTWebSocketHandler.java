@@ -54,36 +54,28 @@ public class IoTWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
-
         try {
-
-            // Increment metric for every received message
             totalMessagesReceived.incrementAndGet();
 
             JsonNode payload = objectMapper.readTree(message.getPayload());
-
             String nodeId = payload.path("nodeId").asText(null);
-            double powerOutput = payload.path("powerOutput").asDouble(0.0);
 
-            if (nodeId != null) {
-                gridNodeService.applyTelemetry(nodeId, powerOutput);
-            }
+            // Phase A11: telemetry no longer mutates state here.
+            // The simulator's Kafka publish (TelemetryProducerService) is now
+            // the single source of truth; TelemetryConsumerService (Phase B11)
+            // is the only caller of gridNodeService.applyTelemetry().
+            // This WS channel is kept only for connection/ack metrics.
 
             String ack = String.format(
                     "{\"ack\":true,\"sessionId\":\"%s\",\"nodeId\":\"%s\"}",
-                    session.getId(),
-                    nodeId
+                    session.getId(), nodeId
             );
-
             session.sendMessage(new TextMessage(ack));
-
-            log.info("[WS] Messages Received = {}", totalMessagesReceived.get());
 
         } catch (Exception e) {
             log.warn("[WS-ERROR] Failed to process telemetry: {}", e.getMessage());
         }
     }
-
     @Override
     public void afterConnectionClosed(WebSocketSession session,
                                       CloseStatus status) {

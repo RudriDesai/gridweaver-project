@@ -18,11 +18,12 @@ public class KafkaProducerController {
     private final TelemetryProducerService producerService;
 
     @GetMapping("/status")
-    public Map<String, Object> status() {
-        return Map.of(
-                "status", "UP",
-                "publishedCount", producerService.getPublishedCount(),
-                "failedCount", producerService.getFailedCount()
-        );
-    }
+public Map<String, Object> status() {
+    return Map.of(
+            "status", "UP",
+            "publishedCount", producerService.getPublishedCount(),
+            "failedCount", producerService.getFailedCount(),
+            "eventsPerSecond", producerService.getEventsPerSecond()
+    );
+}
 }
