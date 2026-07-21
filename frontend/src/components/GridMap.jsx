@@ -6,6 +6,7 @@ import {
   fetchAllNodes,
   initMockNodes,
   fetchNodeHistory,
+  fetchLastKafkaEvent,
 } from "../services/api";
 import { useWebSocket } from "../hooks/useWebSocket";
 import MapLegend from "./MapLegend";
@@ -31,7 +32,7 @@ export default function GridMap() {
 
   // Member A
   const [history, setHistory] = useState({});
-
+  const [kafkaEvents, setKafkaEvents] = useState({});
   // Member B
   const [flashingNodes, setFlashingNodes] = useState(new Set());
 
@@ -78,6 +79,19 @@ export default function GridMap() {
       }
     } catch {
       // ignore history errors
+    }
+  }
+
+  async function loadKafkaEventFor(nodeId) {
+    try {
+      const event = await fetchLastKafkaEvent(nodeId);
+
+      setKafkaEvents((prev) => ({
+        ...prev,
+        [nodeId]: event,
+      }));
+    } catch {
+      // ignore Kafka lookup errors
     }
   }
 
@@ -225,8 +239,12 @@ export default function GridMap() {
               key={node.nodeId}
               node={node}
               flashing={flashingNodes.has(node.nodeId)}
-              onPopupOpen={loadHistoryFor}
+              onPopupOpen={(nodeId) => {
+                loadHistoryFor(nodeId);
+                loadKafkaEventFor(nodeId);
+              }}
               lastTransition={history[node.nodeId]}
+              lastKafkaEvent={kafkaEvents[node.nodeId]}
             />
           ))}
         </MapContainer>

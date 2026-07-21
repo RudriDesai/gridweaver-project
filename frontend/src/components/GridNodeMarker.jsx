@@ -29,7 +29,7 @@ function statusIcon(status, flashing) {
   });
 }
 
-function GridNodeMarker({ node, flashing, onPopupOpen, lastTransition }) {
+function GridNodeMarker({node,flashing,onPopupOpen,lastTransition,lastKafkaEvent}) {
   return (
     <Marker
       position={[node.latitude, node.longitude]}
@@ -65,6 +65,27 @@ function GridNodeMarker({ node, flashing, onPopupOpen, lastTransition }) {
             </span>
           </>
         )}
+
+        {lastKafkaEvent && (
+          <>
+            <hr />
+            <span style={{ fontSize: "11px", color: "#999" }}>
+              Last Kafka Event
+            </span>
+
+            <br />
+            Zone: {lastKafkaEvent.zoneId}
+
+            <br />
+            Battery: {lastKafkaEvent.batteryState}
+
+            <br />
+            Generation: {lastKafkaEvent.generation?.toFixed(1)} kW
+
+            <br />
+            Consumption: {lastKafkaEvent.consumption?.toFixed(1)} kW
+          </>
+        )}
       </Popup>
     </Marker>
   );
@@ -79,5 +100,6 @@ export default memo(GridNodeMarker, (prev, next) =>
   prev.node.gridLoad === next.node.gridLoad &&
   prev.node.timestamp === next.node.timestamp &&
   prev.flashing === next.flashing &&
-  prev.lastTransition === next.lastTransition
+  prev.lastTransition === next.lastTransition &&
+  prev.lastKafkaEvent === next.lastKafkaEvent
 );
