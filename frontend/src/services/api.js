@@ -56,3 +56,9 @@ export async function fetchSimulatorStatus() {
   const res = await fetch(`${BASE_URL}/simulator/status`);
   return handleResponse(res);
 }
+
+export async function fetchLastKafkaEvent(nodeId) {
+  const res = await fetch(`${BASE_URL}/kafka/consumer/last-event/${nodeId}`);
+  if (res.status === 204) return null;
+  return handleResponse(res);
+}
