@@ -12,6 +12,7 @@ import { useWebSocket } from "../hooks/useWebSocket";
 import MapLegend from "./MapLegend";
 import GridNodeMarker from "./GridNodeMarker";
 import TransitionToast from "./TransitionToast";
+import HeatmapLayer from "./HeatmapLayer";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -35,7 +36,8 @@ export default function GridMap() {
   const [kafkaEvents, setKafkaEvents] = useState({});
   // Member B
   const [flashingNodes, setFlashingNodes] = useState(new Set());
-
+  const [heatmapMode, setHeatmapMode] = useState("off");
+  const [zoneStats, setZoneStats] = useState([]);
   const updateBuffer = useRef([]);
   const flushTimer = useRef(null);
 
@@ -172,7 +174,14 @@ export default function GridMap() {
       }, 150);
     }
   }, [lastMessage]);
-
+  useEffect(() => {
+    if (
+      lastMessage?.type === "ZONE_UPDATE" &&
+      Array.isArray(lastMessage.zones)
+    ) {
+      setZoneStats(lastMessage.zones);
+    }
+  }, [lastMessage]);
   useEffect(() => {
     return () => {
       if (flushTimer.current) {
@@ -215,6 +224,15 @@ export default function GridMap() {
         <button onClick={triggerStorm} style={{ marginLeft: "10px", background: "#ef4444", color: "white" }}>
           ⛈ Trigger Storm
         </button>
+        <select
+          value={heatmapMode}
+          onChange={(e) => setHeatmapMode(e.target.value)}
+          style={{ marginLeft: "10px" }}
+        >
+          <option value="off">Heatmap: Off</option>
+          <option value="generation">Heatmap: Generation</option>
+          <option value="consumption">Heatmap: Consumption</option>
+        </select>
       </div>
 
       <div style={{ position: "relative" }}>
@@ -233,6 +251,13 @@ export default function GridMap() {
             attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          {heatmapMode !== "off" && (
+            <HeatmapLayer
+              nodes={nodes}
+              mode={heatmapMode}
+              visible={true}
+            />
+          )}
 
           {nodes.map((node) => (
             <GridNodeMarker
