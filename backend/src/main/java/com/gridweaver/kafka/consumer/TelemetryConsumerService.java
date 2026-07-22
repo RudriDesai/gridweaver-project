@@ -35,7 +35,7 @@ public class TelemetryConsumerService {
             // that GridNodeService/BatteryStateService use to evaluate load
             // and fire state-machine transitions. Consumption/zoneId are
             // carried through for Phase A12 regional analytics.
-            gridNodeService.applyTelemetry(event.nodeId(), event.generation());
+        	gridNodeService.applyTelemetry(event);
 
             log.info("[KAFKA-CONSUME] node={} zone={} battery={} -> state evaluated",
                     event.nodeId(), event.zoneId(), event.batteryState());

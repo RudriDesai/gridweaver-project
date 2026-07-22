@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.gridweaver.model.GridNode;
 import com.gridweaver.service.BatteryStateService;
+import com.gridweaver.kafka.dto.TelemetryEvent;
 /**
  * Registry and management service for all GridNodes in the microgrid.
  *
@@ -33,6 +34,8 @@ public class GridNodeService {
     // Valid status values — enforced on registration
     private static final List<String> VALID_STATUSES =
             List.of("CHARGING", "DISCHARGING", "IDLE", "FAULT");
+    
+    private static final String[] ZONES = {"ZONE-A", "ZONE-B", "ZONE-C", "ZONE-D"};
     
     public GridNodeService(BatteryStateService batteryStateService) {
         this.batteryStateService = batteryStateService;
@@ -124,6 +127,39 @@ public class GridNodeService {
         log.debug("[TELEMETRY] node={} load={} -> status={}", nodeId, gridLoad, newStatus);
         return node;
     }
+    
+    /**
+     * Phase A12/B11: full-fidelity telemetry path used by TelemetryConsumerService.
+     * Carries zoneId/generation/consumption through to the registry so
+     * RegionalAnalyticsService and the heatmap have real data to read.
+     */
+    public GridNode applyTelemetry(TelemetryEvent event) {
+        GridNode node = nodeRegistry.get(event.nodeId());
+
+        double gridLoad = Math.min(100.0, Math.round(event.generation() * 10.0) / 10.0);
+        String newStatus = batteryStateService.evaluate(event.nodeId(), gridLoad).name();
+
+        if (node == null) {
+            double baseLat = 51.505, baseLng = -0.09;
+            double lat = baseLat + (Math.random() * 0.2 - 0.1);
+            double lng = baseLng + (Math.random() * 0.2 - 0.1);
+
+            node = new GridNode(event.nodeId(), lat, lng, newStatus,
+                    event.generation(), gridLoad,
+                    event.zoneId(), event.generation(), event.consumption());
+            nodeRegistry.put(event.nodeId(), node);
+            log.info("[TELEMETRY] Registered new node from Kafka event: {}", event.nodeId());
+        } else {
+            node.setPowerOutput(event.generation());
+            node.setGridLoad(gridLoad);
+            node.setStatus(newStatus);
+            node.setZoneId(event.zoneId());
+            node.setGeneration(event.generation());
+            node.setConsumption(event.consumption());
+            node.setTimestamp(System.currentTimeMillis());
+        }
+        return node;
+    }
 
     // ── Mock Data Initialization ──────────────────────
 
@@ -150,6 +186,8 @@ public class GridNodeService {
             double load = Math.round(Math.random() * 100 * 10.0) / 10.0;
 
             String nodeId = "NODE-" + String.format("%04d", i + 1);
+            
+            String zoneId = ZONES[i % ZONES.length];
 
             String status = batteryStateService
                     .evaluate(nodeId, load)
@@ -161,7 +199,10 @@ public class GridNodeService {
                     lng,
                     status,
                     power,
-                    load
+                    load,
+                    zoneId,
+                    power,
+                    power * 0.6
             );
 
             nodeRegistry.put(node.getNodeId(), node);

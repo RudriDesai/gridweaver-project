@@ -3,6 +3,8 @@ import StatusSidebar from "./components/StatusSidebar";
 import SimulatorPanel from "./components/SimulatorPanel";
 import KafkaProducerStatus from "./components/kafka/KafkaProducerStatus";
 import KafkaConsumerStatus from "./components/kafka/KafkaConsumerStatus";
+import RegionalAnalyticsPanel from "./components/RegionalAnalyticsPanel";
+import RegionalAnalyticsPanel from "./components/RegionalAnalyticsPanel";
 import "./App.css";
 
 function App() {
@@ -17,6 +19,7 @@ function App() {
           <SimulatorPanel />
           <KafkaProducerStatus/>
           <KafkaConsumerStatus/>
+          <RegionalAnalyticsPanel/>
         </main>
         <StatusSidebar />
       </div>
