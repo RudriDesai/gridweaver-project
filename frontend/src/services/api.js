@@ -62,3 +62,8 @@ export async function fetchLastKafkaEvent(nodeId) {
   if (res.status === 204) return null;
   return handleResponse(res);
 }
+
+export async function fetchZoneAnalytics() {
+  const res = await fetch(`${BASE_URL}/analytics/zones`);
+  return handleResponse(res);
+}

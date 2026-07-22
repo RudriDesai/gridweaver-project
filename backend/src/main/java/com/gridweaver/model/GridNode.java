@@ -33,6 +33,15 @@ public class GridNode {
 
     @JsonProperty("gridLoad")
     private double gridLoad; // percentage 0.0 to 100.0
+    
+    @JsonProperty("zoneId")
+    private String zoneId;
+
+    @JsonProperty("generation")
+    private double generation;
+
+    @JsonProperty("consumption")
+    private double consumption;
 
     @JsonProperty("timestamp")
     private long timestamp; // epoch millis — when last updated
@@ -53,7 +62,16 @@ public class GridNode {
         this.gridLoad    = gridLoad;
         this.timestamp   = System.currentTimeMillis();
     }
-
+    
+ // New full constructor (used by telemetry path)
+    public GridNode(String nodeId, double latitude, double longitude, String status,
+                     double powerOutput, double gridLoad,
+                     String zoneId, double generation, double consumption) {
+        this(nodeId, latitude, longitude, status, powerOutput, gridLoad);
+        this.zoneId = zoneId;
+        this.generation = generation;
+        this.consumption = consumption;
+    }
     // ── Getters ───────────────────────────────────────
 
     public String getNodeId()      { return nodeId;      }
@@ -63,7 +81,10 @@ public class GridNode {
     public double getPowerOutput() { return powerOutput; }
     public double getGridLoad()    { return gridLoad;    }
     public long   getTimestamp()   { return timestamp;   }
-
+    public String getZoneId() { return zoneId; }
+    public double getGeneration() { return generation; }
+    public double getConsumption() { return consumption; }
+    
     // ── Setters (only mutable fields) ─────────────────
     // nodeId, lat, lng are fixed after creation
 
@@ -82,6 +103,9 @@ public class GridNode {
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
     }
+    public void setZoneId(String zoneId) { this.zoneId = zoneId; }
+    public void setGeneration(double generation) { this.generation = generation; }
+    public void setConsumption(double consumption) { this.consumption = consumption; }
 
     @Override
     public String toString() {
