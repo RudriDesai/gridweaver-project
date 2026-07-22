@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gridweaver.handler.IoTWebSocketHandler;
 import com.gridweaver.model.GridNode;
+import com.gridweaver.model.ZoneStats;
 
 @Component
 public class LiveUpdateBroadcaster {
@@ -27,7 +28,7 @@ public class LiveUpdateBroadcaster {
     private final BatteryStateService batteryStateService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-
+    private final RegionalAnalyticsService regionalAnalyticsService;
 
     private final ConcurrentLinkedQueue<GridNode> pendingChanges =
             new ConcurrentLinkedQueue<>();
@@ -35,11 +36,13 @@ public class LiveUpdateBroadcaster {
     public LiveUpdateBroadcaster(
             GridNodeService gridNodeService,
             IoTWebSocketHandler webSocketHandler,
-            BatteryStateService batteryStateService) {
+            BatteryStateService batteryStateService,
+            RegionalAnalyticsService regionalAnalyticsService) {
 
         this.gridNodeService = gridNodeService;
         this.webSocketHandler = webSocketHandler;
         this.batteryStateService = batteryStateService;
+        this.regionalAnalyticsService = regionalAnalyticsService;
     }
 
     @PostConstruct
@@ -150,11 +153,52 @@ public class LiveUpdateBroadcaster {
             );
         }
     }
+    /**
+     * Phase B12
+     * Broadcast live zone analytics for the GIS heatmap.
+     */
+    @Scheduled(fixedRate = 2000)
+    public void broadcastZoneUpdates() {
 
+        if (webSocketHandler.getActiveConnectionCount() == 0) {
+            return;
+        }
+
+        try {
+
+            List<ZoneStats> zoneStats =
+                    regionalAnalyticsService.computeZoneStats();
+
+            if (zoneStats.isEmpty()) {
+                return;
+            }
+
+            String payload = objectMapper.writeValueAsString(
+                    new ZoneUpdateMessage(
+                            "ZONE_UPDATE",
+                            zoneStats
+                    )
+            );
+
+            webSocketHandler.broadcastToAll(payload);
+
+        } catch (Exception e) {
+
+            log.warn(
+                    "[BROADCAST-ERROR] zone update: {}",
+                    e.getMessage()
+            );
+        }
+    }
     private record NodeUpdateMessage(
             String type,
             String updateType,
             List<GridNode> nodes
+    ) {
+    }
+    private record ZoneUpdateMessage(
+            String type,
+            List<ZoneStats> zones
     ) {
     }
 }
