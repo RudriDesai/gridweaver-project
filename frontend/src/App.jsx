@@ -5,6 +5,7 @@ import KafkaProducerStatus from "./components/kafka/KafkaProducerStatus";
 import KafkaConsumerStatus from "./components/kafka/KafkaConsumerStatus";
 import RegionalAnalyticsPanel from "./components/RegionalAnalyticsPanel";
 import ConsumerMonitoringDashboard from "./components/kafka/ConsumerMonitoringDashboard";
+import ProducerMonitoringDashboard from "./components/kafka/ProducerMonitoringDashboard";
 import "./App.css";
 
 function App() {
@@ -17,10 +18,11 @@ function App() {
         <main className="app-main">
           <GridMap />
           <SimulatorPanel />
-          <KafkaProducerStatus/>
-          <KafkaConsumerStatus/>
-          <RegionalAnalyticsPanel/>
-          <ConsumerMonitoringDashboard/>
+          <KafkaProducerStatus />
+          <KafkaConsumerStatus />
+          <RegionalAnalyticsPanel />
+          <KafkaProducerStatus />
+          <ProducerMonitoringDashboard />
         </main>
         <StatusSidebar />
       </div>

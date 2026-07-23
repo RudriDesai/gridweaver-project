@@ -26,10 +26,24 @@ public class TelemetryProducerService {
     // Phase A11: rolling 1-second window counter for events/sec
     private final AtomicLong windowCount = new AtomicLong(0);
     private volatile double eventsPerSecond = 0.0;
+    
+    private final AtomicLong inFlightCount = new AtomicLong(0);
+    private final AtomicLong latencySumMs = new AtomicLong(0);
+    private final AtomicLong latencySamples = new AtomicLong(0);
+    private volatile double avgLatencyMs = 0.0;
 
     public void publish(TelemetryEvent event) {
+        long startNanos = System.nanoTime();
+        inFlightCount.incrementAndGet();
+
         kafkaTemplate.send(topic, event.nodeId(), event)
                 .whenComplete((result, ex) -> {
+                    inFlightCount.decrementAndGet();
+
+                    long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000;
+                    latencySumMs.addAndGet(elapsedMs);
+                    latencySamples.incrementAndGet();
+
                     if (ex == null) {
                         publishedCount.incrementAndGet();
                         windowCount.incrementAndGet();
@@ -45,9 +59,33 @@ public class TelemetryProducerService {
     @Scheduled(fixedRate = 1000)
     public void computeThroughput() {
         eventsPerSecond = windowCount.getAndSet(0);
+
+        long samples = latencySamples.getAndSet(0);
+        long sum = latencySumMs.getAndSet(0);
+        if (samples > 0) {
+            avgLatencyMs = Math.round(((double) sum / samples) * 100.0) / 100.0;
+        }
     }
 
-    public long getPublishedCount() { return publishedCount.get(); }
-    public long getFailedCount() { return failedCount.get(); }
-    public double getEventsPerSecond() { return eventsPerSecond; }
+    public long getPublishedCount() {
+        return publishedCount.get();
+    }
+
+    public long getFailedCount() {
+        return failedCount.get();
+    }
+
+    public double getEventsPerSecond() {
+        return eventsPerSecond;
+    }
+
+    public long getQueueSize() {
+        return inFlightCount.get();
+    }
+
+    public double getAvgLatencyMs() {
+        return avgLatencyMs;
+    }
+    
+    
 }
