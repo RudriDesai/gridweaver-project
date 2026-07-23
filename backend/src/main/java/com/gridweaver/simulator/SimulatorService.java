@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import com.gridweaver.kafka.producer.TelemetryProducerService;
 import com.gridweaver.service.BatteryStateService;
 import com.gridweaver.service.GridNodeService;
+import com.gridweaver.kafka.dto.TelemetryEvent;
 
 /**
  * Spring-managed wrapper around IoTSimulatorClient.
@@ -18,10 +19,14 @@ public class SimulatorService {
 
     private final IoTSimulatorClient simulatorClient;
     private final GridNodeService gridNodeService;
+    private final TelemetryProducerService telemetryProducerService;
 
     public SimulatorService(GridNodeService gridNodeService,
-                             TelemetryProducerService telemetryProducerService) {
+            TelemetryProducerService telemetryProducerService) {
+
         this.gridNodeService = gridNodeService;
+        this.telemetryProducerService = telemetryProducerService;
+
         this.simulatorClient = new IoTSimulatorClient(DEFAULT_WS_URL, telemetryProducerService);
     }
 
@@ -50,6 +55,7 @@ public class SimulatorService {
      * under a realistic mass-event load, as described in the use case.
      */
     public void triggerStormScenario(int affectedNodeCount) {
+
         if (affectedNodeCount <= 0 || affectedNodeCount > 50_000) {
             throw new IllegalArgumentException(
                     "affectedNodeCount must be between 1 and 50,000");
@@ -57,29 +63,40 @@ public class SimulatorService {
 
         Thread.ofVirtual().start(() -> {
 
+            String[] zones = { "ZONE-A", "ZONE-B", "ZONE-C", "ZONE-D" };
+
             for (int i = 0; i < affectedNodeCount; i++) {
 
-                final String nodeId =
-                        "STORM-NODE-" + String.format("%05d", i + 1);
+                final String nodeId = "STORM-NODE-" + String.format("%05d", i + 1);
+
+                final String zone = zones[i % zones.length];
 
                 Thread.ofVirtual().start(() -> {
 
                     try {
 
-                        double powerOutput =
-                                95.0 + Math.random() * 5;
+                        double generation = 95 + Math.random() * 5;
 
-                        gridNodeService.applyTelemetry(
+                        double consumption = 70 + Math.random() * 20;
+
+                        double battery = Math.random() * 20;
+
+                        TelemetryEvent event = new TelemetryEvent(
                                 nodeId,
-                                powerOutput);
+                                zone,
+                                generation,
+                                consumption,
+                                battery,
+                                System.currentTimeMillis());
 
-                    } catch (Exception ignored) {
+                        telemetryProducerService.publish(event);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
 
                 });
-
             }
-
         });
     }
 }
