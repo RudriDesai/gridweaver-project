@@ -38,4 +38,15 @@ public class KafkaConsumerController {
         }
         return ResponseEntity.ok(event);
     }
+
+    @GetMapping("/monitoring")
+    public Map<String, Object> monitoring() {
+        return Map.of(
+                "processingRatePerSec", consumerService.getProcessingRatePerSec(),
+                "avgProcessingLatencyMs", consumerService.getAvgProcessingLatencyMs(),
+                "retryCount", consumerService.getRetryCount(),
+                "dlqCount", consumerService.getDlqCount(),
+                "totalConsumed", consumerService.getConsumedCount()
+        );
+    }
 }

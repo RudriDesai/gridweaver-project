@@ -4,6 +4,7 @@ import SimulatorPanel from "./components/SimulatorPanel";
 import KafkaProducerStatus from "./components/kafka/KafkaProducerStatus";
 import KafkaConsumerStatus from "./components/kafka/KafkaConsumerStatus";
 import RegionalAnalyticsPanel from "./components/RegionalAnalyticsPanel";
+import ConsumerMonitoringDashboard from "./components/kafka/ConsumerMonitoringDashboard";
 import ProducerMonitoringDashboard from "./components/kafka/ProducerMonitoringDashboard";
 import "./App.css";
 
