@@ -6,6 +6,7 @@ import com.gridweaver.kafka.producer.TelemetryProducerService;
 import com.gridweaver.service.BatteryStateService;
 import com.gridweaver.service.GridNodeService;
 import com.gridweaver.kafka.dto.TelemetryEvent;
+import java.time.Instant;
 
 /**
  * Spring-managed wrapper around IoTSimulatorClient.
@@ -79,15 +80,19 @@ public class SimulatorService {
 
                         double consumption = 70 + Math.random() * 20;
 
-                        double battery = Math.random() * 20;
+                        double batteryLevel = Math.random() * 20;
+
+                        // Storm causes nodes to discharge
+                        String batteryState = "DISCHARGING";
 
                         TelemetryEvent event = new TelemetryEvent(
                                 nodeId,
                                 zone,
                                 generation,
                                 consumption,
-                                battery,
-                                System.currentTimeMillis());
+                                batteryLevel,
+                                batteryState,
+                                Instant.now());
 
                         telemetryProducerService.publish(event);
 
