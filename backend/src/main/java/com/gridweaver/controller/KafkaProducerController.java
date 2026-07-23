@@ -26,4 +26,14 @@ public Map<String, Object> status() {
             "eventsPerSecond", producerService.getEventsPerSecond()
     );
 }
+    @GetMapping("/monitoring")
+    public Map<String, Object> monitoring() {
+        return Map.of(
+                "publishRatePerSec", producerService.getEventsPerSecond(),
+                "queueSize", producerService.getQueueSize(),
+                "failedPublishes", producerService.getFailedCount(),
+                "avgLatencyMs", producerService.getAvgLatencyMs(),
+                "totalPublished", producerService.getPublishedCount()
+        );
+    }
 }

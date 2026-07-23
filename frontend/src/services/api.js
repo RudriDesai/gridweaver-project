@@ -67,3 +67,8 @@ export async function fetchZoneAnalytics() {
   const res = await fetch(`${BASE_URL}/analytics/zones`);
   return handleResponse(res);
 }
+
+export async function fetchProducerMonitoring() {
+  const res = await fetch(`${BASE_URL}/kafka/producer/monitoring`);
+  return handleResponse(res);
+}

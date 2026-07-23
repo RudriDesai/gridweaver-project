@@ -1,0 +1,7 @@
+.monitoring-dashboard { background: #fff; border-radius: 8px; padding: 12px 16px; margin-top: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.monitoring-dashboard h3 { margin: 0 0 8px; font-size: 14px; }
+.monitoring-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.monitoring-card { background: #f8fafc; border-radius: 6px; padding: 8px; text-align: center; }
+.monitoring-card.warn { background: #fef2f2; }
+.monitoring-value { display: block; font-size: 18px; font-weight: 700; }
+.monitoring-label { font-size: 11px; color: #666; }
