@@ -35,8 +35,8 @@ import com.gridweaver.kafka.producer.TelemetryProducerService;
 public class IoTSimulatorClient {
 
     private static final Logger log = LoggerFactory.getLogger(IoTSimulatorClient.class);
-    private static final String[] ZONES = {"ZONE-A", "ZONE-B", "ZONE-C", "ZONE-D"};
-    private static final String[] BATTERY_STATES = {"CHARGING", "DISCHARGING", "IDLE", "FULL", "LOW"};
+    private static final String[] ZONES = { "ZONE-A", "ZONE-B", "ZONE-C", "ZONE-D" };
+    private static final String[] BATTERY_STATES = { "CHARGING", "DISCHARGING", "IDLE", "FULL", "LOW" };
 
     private final String wsUrl;
     private final TelemetryProducerService telemetryProducerService;
@@ -90,15 +90,29 @@ public class IoTSimulatorClient {
         });
     }
 
+    int batchSize = 100;
+
     private void runBatch(int nodeCount, int messagesPerNode) {
         log.info("Starting simulation: {} nodes, {} messages each", nodeCount, messagesPerNode);
         CountDownLatch completionLatch = new CountDownLatch(nodeCount);
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            for (int i = 0; i < nodeCount; i++) {
-                final String nodeId = "SIM-NODE-" + String.format("%05d", i + 1);
-                final String zoneId = ZONES[i % ZONES.length];
-                executor.submit(() -> simulateNode(nodeId, zoneId, messagesPerNode, completionLatch));
+            for (int start = 0; start < nodeCount; start += batchSize) {
+
+                int end = Math.min(start + batchSize, nodeCount);
+
+                for (int i = start; i < end; i++) {
+
+                    final String nodeId = "SIM-NODE-" + String.format("%05d", i + 1);
+
+                    final String zoneId = ZONES[i % ZONES.length];
+
+                    executor.submit(() -> simulateNode(nodeId, zoneId,
+                            messagesPerNode,
+                            completionLatch));
+                }
+
+                Thread.sleep(300); // allow previous batch to establish connections
             }
             completionLatch.await(5, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
@@ -107,7 +121,7 @@ public class IoTSimulatorClient {
         }
 
         log.info("=== SIMULATION COMPLETE === connected={} failed={} acks={}",
-            connectedCount.get(), failedCount.get(), ackCount.get());
+                connectedCount.get(), failedCount.get(), ackCount.get());
     }
 
     private void simulateNode(String nodeId, String zoneId, int messagesPerNode, CountDownLatch latch) {
@@ -115,38 +129,52 @@ public class IoTSimulatorClient {
 
         WebSocketHandler handler = new TextWebSocketHandler() {
             @Override
-            public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+            public void afterConnectionEstablished(WebSocketSession session) {
+
                 connectedCount.incrementAndGet();
-                for (int m = 0; m < messagesPerNode; m++) {
-                    double powerOutput = Math.random() * 100;
-                    double generation = Math.random() * 100;
-                    double consumption = Math.random() * 100;
-                    double batteryLevel = Math.random() * 100;
-                    String batteryState = BATTERY_STATES[(int) (Math.random() * BATTERY_STATES.length)];
 
-                    String payload = String.format(
-                        "{\"nodeId\":\"%s\",\"seq\":%d,\"powerOutput\":%.1f,\"timestamp\":%d}",
-                        nodeId, m, powerOutput, System.currentTimeMillis()
-                    );
-                    if (session.isOpen()) {
-                        session.sendMessage(new TextMessage(payload));
-                    }
+                Thread.ofVirtual().start(() -> {
 
-                    // Publish the same telemetry sample to Kafka.
-                    // Failures are handled inside the producer service
-                    // (logged + counted) and never break the WS loop.
                     try {
-                        telemetryProducerService.publish(
-                            new TelemetryEvent(nodeId, zoneId, generation,
-                                consumption, batteryLevel, batteryState, Instant.now())
-                        );
-                    } catch (Exception ex) {
-                        log.warn("Kafka publish failed for node {}: {}", nodeId, ex.getMessage());
-                    }
 
-                    Thread.sleep(50);
-                }
-                session.close(CloseStatus.NORMAL);
+                        for (int m = 0; m < messagesPerNode; m++) {
+
+                            double powerOutput = Math.random() * 100;
+                            double generation = Math.random() * 100;
+                            double consumption = Math.random() * 100;
+                            double batteryLevel = Math.random() * 100;
+
+                            String batteryState = BATTERY_STATES[(int) (Math.random() * BATTERY_STATES.length)];
+
+                            String payload = String.format(
+                                    "{\"nodeId\":\"%s\",\"seq\":%d,\"powerOutput\":%.1f,\"timestamp\":%d}",
+                                    nodeId,
+                                    m,
+                                    powerOutput,
+                                    System.currentTimeMillis());
+
+                            if (session.isOpen()) {
+                                session.sendMessage(new TextMessage(payload));
+                            }
+
+                            telemetryProducerService.publish(
+                                    new TelemetryEvent(
+                                            nodeId,
+                                            zoneId,
+                                            generation,
+                                            consumption,
+                                            batteryLevel,
+                                            batteryState,
+                                            Instant.now()));
+
+                            Thread.sleep(50);
+                        }
+
+                        session.close(CloseStatus.NORMAL);
+
+                    } catch (Exception ignored) {
+                    }
+                });
             }
 
             @Override
@@ -177,28 +205,81 @@ public class IoTSimulatorClient {
     /** Snapshot of current simulation progress — safe to call anytime. */
     public SimulationStatus getStatus() {
         long elapsedMs = running.get()
-            ? System.currentTimeMillis() - startTime
-            : (endTime > 0 ? endTime - startTime : 0);
+                ? System.currentTimeMillis() - startTime
+                : (endTime > 0 ? endTime - startTime : 0);
 
         return new SimulationStatus(
-            running.get(),
-            targetNodeCount,
-            connectedCount.get(),
-            failedCount.get(),
-            ackCount.get(),
-            completedCount.get(),
-            elapsedMs
-        );
+                running.get(),
+                targetNodeCount,
+                connectedCount.get(),
+                failedCount.get(),
+                ackCount.get(),
+                completedCount.get(),
+                elapsedMs);
+    }
+
+    /**
+     * Phase A14: publishes directly to Kafka on virtual threads with no
+     * WebSocket connection per node — isolates and validates raw producer
+     * throughput (batching/compression/acks) without WS handshake overhead.
+     */
+    public void runProducerStressTest(int nodeCount, int messagesPerNode) {
+        if (running.get()) {
+            throw new IllegalStateException("Simulation already running");
+        }
+        running.set(true);
+        connectedCount.set(0);
+        failedCount.set(0);
+        ackCount.set(0);
+        completedCount.set(0);
+        targetNodeCount = nodeCount;
+        startTime = System.currentTimeMillis();
+        endTime = 0;
+
+        Thread.ofVirtual().start(() -> {
+            CountDownLatch latch = new CountDownLatch(nodeCount);
+            try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                for (int i = 0; i < nodeCount; i++) {
+                    final String nodeId = "STRESS-NODE-" + String.format("%05d", i + 1);
+                    final String zoneId = ZONES[i % ZONES.length];
+                    executor.submit(() -> {
+                        for (int m = 0; m < messagesPerNode; m++) {
+                            try {
+                                telemetryProducerService.publish(new TelemetryEvent(
+                                        nodeId, zoneId,
+                                        Math.random() * 100, Math.random() * 100,
+                                        Math.random() * 100,
+                                        BATTERY_STATES[(int) (Math.random() * BATTERY_STATES.length)],
+                                        Instant.now()));
+                                ackCount.incrementAndGet();
+                            } catch (Exception ex) {
+                                failedCount.incrementAndGet();
+                            }
+                        }
+                        completedCount.incrementAndGet();
+                        latch.countDown();
+                    });
+                }
+                latch.await(5, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                running.set(false);
+                endTime = System.currentTimeMillis();
+                log.info("=== STRESS TEST COMPLETE === published={} failed={}",
+                        ackCount.get(), failedCount.get());
+            }
+        });
     }
 
     /** Immutable status snapshot returned to REST clients. */
     public record SimulationStatus(
-        boolean running,
-        int targetNodeCount,
-        int connected,
-        int failed,
-        int acksReceived,
-        int completed,
-        long elapsedMs
-    ) {}
+            boolean running,
+            int targetNodeCount,
+            int connected,
+            int failed,
+            int acksReceived,
+            int completed,
+            long elapsedMs) {
+    }
 }
