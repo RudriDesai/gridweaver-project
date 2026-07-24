@@ -190,6 +190,60 @@ public class IoTSimulatorClient {
             elapsedMs
         );
     }
+    
+    /**
+     * Phase A14: publishes directly to Kafka on virtual threads with no
+     * WebSocket connection per node — isolates and validates raw producer
+     * throughput (batching/compression/acks) without WS handshake overhead.
+     */
+    public void runProducerStressTest(int nodeCount, int messagesPerNode) {
+        if (running.get()) {
+            throw new IllegalStateException("Simulation already running");
+        }
+        running.set(true);
+        connectedCount.set(0);
+        failedCount.set(0);
+        ackCount.set(0);
+        completedCount.set(0);
+        targetNodeCount = nodeCount;
+        startTime = System.currentTimeMillis();
+        endTime = 0;
+
+        Thread.ofVirtual().start(() -> {
+            CountDownLatch latch = new CountDownLatch(nodeCount);
+            try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                for (int i = 0; i < nodeCount; i++) {
+                    final String nodeId = "STRESS-NODE-" + String.format("%05d", i + 1);
+                    final String zoneId = ZONES[i % ZONES.length];
+                    executor.submit(() -> {
+                        for (int m = 0; m < messagesPerNode; m++) {
+                            try {
+                                telemetryProducerService.publish(new TelemetryEvent(
+                                        nodeId, zoneId,
+                                        Math.random() * 100, Math.random() * 100,
+                                        Math.random() * 100,
+                                        BATTERY_STATES[(int) (Math.random() * BATTERY_STATES.length)],
+                                        Instant.now()));
+                                ackCount.incrementAndGet();
+                            } catch (Exception ex) {
+                                failedCount.incrementAndGet();
+                            }
+                        }
+                        completedCount.incrementAndGet();
+                        latch.countDown();
+                    });
+                }
+                latch.await(5, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                running.set(false);
+                endTime = System.currentTimeMillis();
+                log.info("=== STRESS TEST COMPLETE === published={} failed={}",
+                        ackCount.get(), failedCount.get());
+            }
+        });
+    }
 
     /** Immutable status snapshot returned to REST clients. */
     public record SimulationStatus(
