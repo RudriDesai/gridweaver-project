@@ -36,4 +36,6 @@ public Map<String, Object> status() {
                 "totalPublished", producerService.getPublishedCount()
         );
     }
+    
+    
 }

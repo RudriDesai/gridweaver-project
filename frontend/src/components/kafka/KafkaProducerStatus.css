@@ -70,3 +70,33 @@
   font-size: 11px;
   color: #f38ba8;
 }
+
+.sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 20px;
+  margin-top: 4px;
+}
+
+.sparkline-bar {
+  flex: 1;
+  background: #6366f1;
+  border-radius: 1px;
+  min-height: 2px;
+}
+
+.sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 20px;
+  margin-top: 4px;
+}
+
+.sparkline-bar {
+  flex: 1;
+  background: #6366f1;
+  border-radius: 1px;
+  min-height: 2px;
+}

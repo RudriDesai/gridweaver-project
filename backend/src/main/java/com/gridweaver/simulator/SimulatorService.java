@@ -104,4 +104,10 @@ public class SimulatorService {
             }
         });
     }
+    public void startStressTest(int nodeCount, int messagesPerNode) {
+        if (nodeCount <= 0 || nodeCount > 50_000) {
+            throw new IllegalArgumentException("nodeCount must be between 1 and 50,000");
+        }
+        simulatorClient.runProducerStressTest(nodeCount, messagesPerNode);
+    }
 }
