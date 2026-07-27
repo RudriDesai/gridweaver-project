@@ -76,3 +76,7 @@ export async function fetchProducerMonitoring() {
   const res = await fetch(`${BASE_URL}/kafka/producer/monitoring`);
   return handleResponse(res);
 }
+export async function fetchAuditEvents(limit = 100) {
+  const res = await fetch(`${BASE_URL}/audit/events?limit=${limit}`);
+  return handleResponse(res);
+}
