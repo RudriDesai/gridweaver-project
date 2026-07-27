@@ -70,13 +70,14 @@ export async function fetchZoneAnalytics() {
 
 export async function fetchConsumerMonitoring() {
   const res = await fetch(`${BASE_URL}/kafka/consumer/monitoring`);
-  return handleResponse(res);
-}
+  return handleResponse(res);}
+
 export async function fetchProducerMonitoring() {
   const res = await fetch(`${BASE_URL}/kafka/producer/monitoring`);
   return handleResponse(res);
 }
-export async function fetchAuditEvents(limit = 100) {
-  const res = await fetch(`${BASE_URL}/audit/events?limit=${limit}`);
+
+export async function fetchBalancingRecommendations() {
+  const res = await fetch(`${BASE_URL}/balancing/recommendations`);
   return handleResponse(res);
 }
