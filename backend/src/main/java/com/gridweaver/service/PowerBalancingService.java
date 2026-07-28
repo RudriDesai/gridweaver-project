@@ -1,14 +1,18 @@
 package com.gridweaver.service;
 
+import com.gridweaver.model.BalancingEvent;
 import com.gridweaver.model.BalancingRecommendation;
 import com.gridweaver.model.ZoneStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
-
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Collectors;
 /**
  * Phase A15 — Regional Power Balancing Engine.
  *
@@ -28,13 +32,22 @@ public class PowerBalancingService {
     // A zone only counts as surplus/deficit once the gap exceeds this,
     // to avoid noisy micro-recommendations on near-balanced zones.
     private static final double IMBALANCE_THRESHOLD_KW = 1.0;
-
+    private static final int MAX_EXECUTION_HISTORY = 500;
+    
     private final RegionalAnalyticsService regionalAnalyticsService;
-
+    
+    // Phase A16 — configurable, read from application.properties
+    @Value("${gridweaver.balancing.threshold-kw:5.0}")
+    private double executionThresholdKw;
+    
+ // Phase A16 — in-memory record of transfers actually executed
+    private final Deque<BalancingEvent> executionHistory = new ConcurrentLinkedDeque<>();
+    
     public PowerBalancingService(RegionalAnalyticsService regionalAnalyticsService) {
         this.regionalAnalyticsService = regionalAnalyticsService;
     }
-
+    
+    
     /**
      * Computes balancing recommendations by pairing surplus zones with
      * deficit zones, largest imbalance first.
@@ -90,6 +103,41 @@ public class PowerBalancingService {
                 recommendations.size(), surplusZones.size(), deficitZones.size());
 
         return recommendations;
+    }
+    
+    /**
+     * Phase A16 — Executes balancing: any recommendation whose transfer
+     * amount clears the configurable threshold is "executed" (recorded as
+     * a BalancingEvent for WebSocket broadcast + later analytics).
+     *
+     * Day 2 is intentionally read/record-only against node telemetry —
+     * it does not mutate GridNode generation/consumption, since telemetry
+     * is owned by the Kafka pipeline (Phase A11/B11). This avoids fighting
+     * the simulator for ownership of those fields while still giving a
+     * real, queryable execution feed for the map and later analytics.
+     */
+    public List<BalancingEvent> executeBalancing() {
+        List<BalancingRecommendation> recommendations = computeRecommendations();
+
+        List<BalancingEvent> executed = recommendations.stream()
+                .filter(r -> r.recommendedTransfer() >= executionThresholdKw)
+                .map(r -> BalancingEvent.of(r.fromZone(), r.toZone(), r.recommendedTransfer(), r.severity()))
+                .collect(Collectors.toList());
+        
+        executed.forEach(e -> {
+            executionHistory.addFirst(e);
+            log.info("[BALANCING-EXEC] {} -> {} : {} kW ({})",
+                    e.fromZone(), e.toZone(), e.amountKw(), e.severity());
+        });
+
+        while (executionHistory.size() > MAX_EXECUTION_HISTORY) {
+            executionHistory.removeLast();
+        }
+
+        return executed;
+    }
+    public List<BalancingEvent> getRecentExecutions(int limit) {
+        return executionHistory.stream().limit(limit).collect(Collectors.toList());
     }
 
     private String severity(double deficit) {
