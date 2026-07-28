@@ -80,18 +80,29 @@ export async function fetchProducerMonitoring() {
 export async function fetchBalancingRecommendations() {
   const res = await fetch(`${BASE_URL}/balancing/recommendations`);
   return handleResponse(res);
+
+export async function fetchAuditEvents(limit = 100) {
+  const res = await fetch(`${BASE_URL}/audit/events?limit=${limit}`);
+  return handleResponse(res);
 }
 
-export async function fetchAuditEventsPaged({ nodeId, zoneId, state, from, to, page = 0, size = 20 } = {}) {
+export async function fetchAuditEventsPaged(
+  { nodeId, zoneId, state, from, to, page = 0, size = 20 } = {}
+) {
   const params = new URLSearchParams();
+
   if (nodeId) params.set("nodeId", nodeId);
   if (zoneId) params.set("zoneId", zoneId);
   if (state) params.set("state", state);
   if (from) params.set("from", from);
   if (to) params.set("to", to);
+
   params.set("page", page);
   params.set("size", size);
 
-  const res = await fetch(`${BASE_URL}/audit/events/query?${params.toString()}`);
+  const res = await fetch(
+    `${BASE_URL}/audit/events/query?${params.toString()}`
+  );
+
   return handleResponse(res);
 }

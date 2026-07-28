@@ -13,6 +13,7 @@ import MapLegend from "./MapLegend";
 import GridNodeMarker from "./GridNodeMarker";
 import TransitionToast from "./TransitionToast";
 import HeatmapLayer from "./HeatmapLayer";
+import PowerTransferArrows from "./PowerTransferArrows";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -38,6 +39,9 @@ export default function GridMap() {
   const [flashingNodes, setFlashingNodes] = useState(new Set());
   const [heatmapMode, setHeatmapMode] = useState("off");
   const [zoneStats, setZoneStats] = useState([]);
+  // Member A — Phase A16
+  const [transfers, setTransfers] = useState([]);
+
   const updateBuffer = useRef([]);
   const flushTimer = useRef(null);
 
@@ -183,6 +187,21 @@ export default function GridMap() {
     }
   }, [lastMessage]);
   useEffect(() => {
+    if (
+      lastMessage?.type === "BALANCING_EVENT" &&
+      Array.isArray(lastMessage.events)
+    ) {
+      setTransfers(lastMessage.events);
+
+      // Clear arrows after 6 seconds
+      const timer = setTimeout(() => {
+        setTransfers([]);
+      }, 6000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [lastMessage]);
+  useEffect(() => {
     return () => {
       if (flushTimer.current) {
         clearTimeout(flushTimer.current);
@@ -258,6 +277,11 @@ export default function GridMap() {
               visible={true}
             />
           )}
+
+          <PowerTransferArrows
+            nodes={nodes}
+            transfers={transfers}
+          />
 
           {nodes.map((node) => (
             <GridNodeMarker
