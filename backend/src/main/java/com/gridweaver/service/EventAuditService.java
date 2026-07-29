@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,9 +25,19 @@ public class EventAuditService {
     private final GridNodeService gridNodeService;
     private final Deque<AuditEvent> auditLog = new ConcurrentLinkedDeque<>();
 
+    public interface AuditEventListener {
+        void onAuditEvent(AuditEvent event);
+    }
+
+    private final List<AuditEventListener> listeners = new CopyOnWriteArrayList<>();
+
     public EventAuditService(BatteryStateService batteryStateService, GridNodeService gridNodeService) {
         this.batteryStateService = batteryStateService;
         this.gridNodeService = gridNodeService;
+    }
+
+    public void addListener(AuditEventListener listener) {
+        listeners.add(listener);
     }
 
     @PostConstruct
@@ -45,6 +56,15 @@ public class EventAuditService {
                 auditLog.removeLast();
             }
             log.debug("[AUDIT] {} : {} -> {} ({})", nodeId, oldState, newState, event.reason());
+
+            // Phase B17 — fan out to any real-time listeners (e.g. WebSocket broadcaster)
+            for (AuditEventListener l : listeners) {
+                try {
+                    l.onAuditEvent(event);
+                } catch (Exception e) {
+                    log.warn("[AUDIT-LISTENER-ERROR] {}", e.getMessage());
+                }
+            }
         });
     }
 
@@ -56,7 +76,6 @@ public class EventAuditService {
         return "Grid load returned to normal operating range";
     }
 
-    // ── Day 1 (unchanged) ──────────────────────────────
     public List<AuditEvent> getRecentEvents(int limit) {
         return auditLog.stream().limit(limit).collect(Collectors.toList());
     }
@@ -65,14 +84,6 @@ public class EventAuditService {
         return auditLog.size();
     }
 
-    // ── Phase B16 — filtered + paginated query ─────────
-    /**
-     * @param nodeId optional exact match
-     * @param zoneId optional exact match
-     * @param state  optional — matches either previousState or newState
-     * @param from   optional epoch-millis lower bound (inclusive)
-     * @param to     optional epoch-millis upper bound (inclusive)
-     */
     public AuditPageResponse queryEvents(String nodeId, String zoneId, String state,
                                          Long from, Long to, int page, int size) {
 
