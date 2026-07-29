@@ -1,5 +1,6 @@
 package com.gridweaver.service;
 
+import com.gridweaver.model.BalancingMetrics;
 import com.gridweaver.model.BalancingEvent;
 import com.gridweaver.model.BalancingRecommendation;
 import com.gridweaver.model.ZoneStats;
@@ -13,6 +14,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.stream.Collectors;
+
 /**
  * Phase A15 — Regional Power Balancing Engine.
  *
@@ -33,21 +35,21 @@ public class PowerBalancingService {
     // to avoid noisy micro-recommendations on near-balanced zones.
     private static final double IMBALANCE_THRESHOLD_KW = 1.0;
     private static final int MAX_EXECUTION_HISTORY = 500;
-    
+    private static final long METRICS_WINDOW_MS = 5 * 60 * 1000L; // 5-minute rolling window
+
     private final RegionalAnalyticsService regionalAnalyticsService;
-    
-    // Phase A16 — configurable, read from application.properties
+
+ // Phase A16 — configurable, read from application.properties
     @Value("${gridweaver.balancing.threshold-kw:5.0}")
     private double executionThresholdKw;
-    
- // Phase A16 — in-memory record of transfers actually executed
+
+    // Phase A16 — in-memory record of transfers actually executed
     private final Deque<BalancingEvent> executionHistory = new ConcurrentLinkedDeque<>();
-    
+
     public PowerBalancingService(RegionalAnalyticsService regionalAnalyticsService) {
         this.regionalAnalyticsService = regionalAnalyticsService;
     }
-    
-    
+
     /**
      * Computes balancing recommendations by pairing surplus zones with
      * deficit zones, largest imbalance first.
@@ -123,7 +125,7 @@ public class PowerBalancingService {
                 .filter(r -> r.recommendedTransfer() >= executionThresholdKw)
                 .map(r -> BalancingEvent.of(r.fromZone(), r.toZone(), r.recommendedTransfer(), r.severity()))
                 .collect(Collectors.toList());
-        
+
         executed.forEach(e -> {
             executionHistory.addFirst(e);
             log.info("[BALANCING-EXEC] {} -> {} : {} kW ({})",
@@ -136,8 +138,71 @@ public class PowerBalancingService {
 
         return executed;
     }
+
     public List<BalancingEvent> getRecentExecutions(int limit) {
         return executionHistory.stream().limit(limit).collect(Collectors.toList());
+    }
+    
+    /**
+     * Phase A17 — Computes balancing analytics:
+     *  - totalSurplusKw / totalDeficitKw: current live imbalance across zones
+     *  - totalTransferredKw: sum of executed transfers within the rolling window
+     *  - balancingEfficiencyPercent: how much of the addressable deficit has
+     *    actually been resolved by executed transfers in that window
+     */
+    public BalancingMetrics computeMetrics() {
+        List<ZoneStats> zones = regionalAnalyticsService.computeZoneStats();
+
+        double totalSurplus = 0;
+        double totalDeficit = 0;
+        int surplusZoneCount = 0;
+        int deficitZoneCount = 0;
+
+        for (ZoneStats z : zones) {
+            double net = z.totalGeneration() - z.totalConsumption();
+            if (net > IMBALANCE_THRESHOLD_KW) {
+                totalSurplus += net;
+                surplusZoneCount++;
+            } else if (net < -IMBALANCE_THRESHOLD_KW) {
+                totalDeficit += Math.abs(net);
+                deficitZoneCount++;
+            }
+        }
+
+        long now = System.currentTimeMillis();
+        long windowStart = now - METRICS_WINDOW_MS;
+
+        List<BalancingEvent> windowEvents = executionHistory.stream()
+                .filter(e -> e.timestamp() >= windowStart)
+                .collect(Collectors.toList());
+
+        double totalTransferred = windowEvents.stream()
+                .mapToDouble(BalancingEvent::amountKw)
+                .sum();
+
+        // Efficiency: portion of current+recent deficit that transfers have
+        // actually resolved. Capped at 100% and guarded against divide-by-zero
+        // when the grid is already balanced (deficit == 0 -> perfect score).
+        double addressableDeficit = totalDeficit + totalTransferred;
+        double efficiency = addressableDeficit <= 0
+                ? 100.0
+                : Math.min(100.0, (totalTransferred / addressableDeficit) * 100.0);
+
+        return new BalancingMetrics(
+                round1(totalSurplus),
+                round1(totalDeficit),
+                round1(totalTransferred),
+                round1(efficiency),
+                surplusZoneCount,
+                deficitZoneCount,
+                windowEvents.size(),
+                METRICS_WINDOW_MS,
+                now
+        );
+    }
+
+    private double round1(double v) {
+        return Math.round(v * 10.0) / 10.0;
     }
 
     private String severity(double deficit) {
