@@ -45,6 +45,10 @@ export default function GridMap() {
   const updateBuffer = useRef([]);
   const flushTimer = useRef(null);
 
+  const transferTimer = useRef(null);
+const lastTransferIds = useRef("");
+
+
   const [toastEvent, setToastEvent] = useState(null);
 
   const loadNodes = async () => {
@@ -187,20 +191,46 @@ export default function GridMap() {
     }
   }, [lastMessage]);
   useEffect(() => {
-    if (
-      lastMessage?.type === "BALANCING_EVENT" &&
-      Array.isArray(lastMessage.events)
-    ) {
-      setTransfers(lastMessage.events);
+  if (
+    lastMessage?.type !== "BALANCING_EVENT" ||
+    !Array.isArray(lastMessage.events)
+  ) {
+    return;
+  }
 
-      // Clear arrows after 6 seconds
-      const timer = setTimeout(() => {
-        setTransfers([]);
-      }, 6000);
+  // Create a unique signature for this batch
+  const ids = lastMessage.events
+    .map((e) => e.eventId)
+    .sort()
+    .join(",");
 
-      return () => clearTimeout(timer);
+  // Ignore duplicate broadcasts
+  if (ids === lastTransferIds.current) {
+    return;
+  }
+
+  lastTransferIds.current = ids;
+
+  setTransfers(lastMessage.events);
+
+  if (transferTimer.current) {
+    clearTimeout(transferTimer.current);
+  }
+
+  transferTimer.current = setTimeout(() => {
+    setTransfers([]);
+    lastTransferIds.current = "";
+  }, 6000);
+
+}, [lastMessage]);
+
+useEffect(() => {
+  return () => {
+    if (transferTimer.current) {
+      clearTimeout(transferTimer.current);
     }
-  }, [lastMessage]);
+  };
+}, []);
   useEffect(() => {
     return () => {
       if (flushTimer.current) {
