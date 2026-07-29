@@ -13,3 +13,8 @@
 .event-log-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; }
 .event-log-pagination button { padding: 3px 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9fafb; cursor: pointer; }
 .event-log-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.event-log-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; border: none; background: #3b82f6; color: #fff; cursor: pointer; animation: pulse-badge 1.4s infinite; }
+@keyframes pulse-badge { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
+.event-log-autoscroll { font-size: 11px; color: #666; display: flex; align-items: center; gap: 4px; }
+.event-row-live { animation: flash-in 1.2s ease-out; }
+@keyframes flash-in { 0% { background: #dbeafe; } 100% { background: transparent; } }
