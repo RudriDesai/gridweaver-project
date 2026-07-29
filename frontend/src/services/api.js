@@ -81,8 +81,14 @@ export async function fetchBalancingRecommendations() {
   const res = await fetch(`${BASE_URL}/balancing/recommendations`);
   return handleResponse(res);
 }
+
 export async function fetchAuditEvents(limit = 100) {
   const res = await fetch(`${BASE_URL}/audit/events?limit=${limit}`);
+  return handleResponse(res);
+}
+
+export async function fetchBalancingMetrics() {
+  const res = await fetch(`${BASE_URL}/balancing/metrics`);
   return handleResponse(res);
 }
 

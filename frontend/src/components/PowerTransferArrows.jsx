@@ -1,5 +1,6 @@
 import { Polyline, Marker } from "react-leaflet";
 import L from "leaflet";
+import { Fragment } from "react";
 import { computeZoneCentroids, bearingDegrees, SEVERITY_COLORS } from "../zoneUtils";
 
 /**
@@ -42,13 +43,21 @@ export default function PowerTransferArrows({ nodes, transfers }) {
         const angle = bearingDegrees(from, to) + 180;
 
         return (
-          <div key={t.eventId}>
+          <Fragment key={t.eventId}>
             <Polyline
               positions={[from, to]}
-              pathOptions={{ color, weight: 3, dashArray: "6 6", opacity: 0.85 }}
+              pathOptions={{
+                color,
+                weight: 3,
+                dashArray: "6 6",
+                opacity: 0.85,
+              }}
             />
-            <Marker position={midpoint} icon={arrowIcon(angle, color)} />
-          </div>
+            <Marker
+              position={midpoint}
+              icon={arrowIcon(angle, color)}
+            />
+          </Fragment>
         );
       })}
     </>

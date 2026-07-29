@@ -83,33 +83,32 @@ function ProducerMonitoringDashboard() {
       {data && (
         <div className="monitoring-grid">
 
-          <div className="monitoring-card">
+          <div
+            className={`monitoring-card ${data.failedPublishes > 0 ? "warn" : "healthy"
+              }`}
+          >
             <span className="monitoring-value">
-              {data.publishRatePerSec.toFixed(1)}
-            </span>
-            <span className="monitoring-label">
-              Publish rate/sec
+              {data.failedPublishes === 0 ? "🟢 Active" : "🔴 Error"}
             </span>
 
-            <Sparkline
-              values={rateHistory}
-              max={Math.max(1, ...rateHistory)}
-            />
+            <span className="monitoring-label">
+              Producer Status
+            </span>
           </div>
 
           <div className="monitoring-card">
             <span className="monitoring-value">
-              {data.queueSize}
+              {data.totalPublished}
             </span>
+
             <span className="monitoring-label">
-              In-flight queue
+              Published Messages
             </span>
           </div>
 
           <div
-            className={`monitoring-card ${
-              data.failedPublishes > 0 ? "warn" : ""
-            }`}
+            className={`monitoring-card ${data.failedPublishes > 0 ? "warn" : ""
+              }`}
           >
             <span className="monitoring-value">
               {data.failedPublishes}
