@@ -112,3 +112,13 @@ export async function fetchAuditEventsPaged(
 
   return handleResponse(res);
 }
+
+export async function fetchStabilityStatus() {
+  const res = await fetch(`${BASE_URL}/stability/status`);
+  return handleResponse(res);
+}
+
+export async function fetchStabilityAlerts(limit = 50) {
+  const res = await fetch(`${BASE_URL}/stability/alerts?limit=${limit}`);
+  return handleResponse(res);
+}
