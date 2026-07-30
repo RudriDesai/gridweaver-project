@@ -7,7 +7,8 @@ import RegionalAnalyticsPanel from "./components/RegionalAnalyticsPanel";
 import ConsumerMonitoringDashboard from "./components/kafka/ConsumerMonitoringDashboard";
 import ProducerMonitoringDashboard from "./components/kafka/ProducerMonitoringDashboard";
 import EventLog from "./components/EventLog";    
-import BalancingAnalyticsWidget from "./components/BalancingAnalyticsWidget";                     // Member B
+import BalancingAnalyticsWidget from "./components/BalancingAnalyticsWidget";
+import AuditAnalyticsDashboard from "./components/AuditAnalyticsDashboard";
 import "./App.css";
 
 function App() {
@@ -24,7 +25,7 @@ function App() {
           <KafkaConsumerStatus />
           <RegionalAnalyticsPanel />
           <EventLog />               {/* Member B — Phase B15 */}
-          <KafkaProducerStatus />
+          <AuditAnalyticsDashboard />
           <ProducerMonitoringDashboard />
           <BalancingAnalyticsWidget />
         </main>
