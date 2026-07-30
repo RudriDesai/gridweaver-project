@@ -112,3 +112,26 @@ export async function fetchAuditEventsPaged(
 
   return handleResponse(res);
 }
+
+export async function fetchAuditStatistics() {
+  const res = await fetch(`${BASE_URL}/audit/statistics`);
+  return handleResponse(res);
+}
+
+export function getAuditExportUrl({
+  nodeId,
+  zoneId,
+  state,
+  from,
+  to,
+} = {}) {
+  const params = new URLSearchParams();
+
+  if (nodeId) params.set("nodeId", nodeId);
+  if (zoneId) params.set("zoneId", zoneId);
+  if (state) params.set("state", state);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+
+  return `${BASE_URL}/audit/export?${params.toString()}`;
+}
