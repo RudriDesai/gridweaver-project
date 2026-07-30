@@ -30,24 +30,41 @@ function EventLog() {
   useEffect(() => {
     if (lastMessage?.type !== "AUDIT_EVENT" || !lastMessage.event) return;
 
-    setLiveEvents((prev) => [lastMessage.event, ...prev].slice(0, MAX_LIVE_EVENTS));
+    setLiveEvents((prev) => {
+      // Remove existing event with the same eventId
+      const filtered = prev.filter(
+        (event) => event.eventId !== lastMessage.event.eventId
+      );
+
+      return [lastMessage.event, ...filtered].slice(0, MAX_LIVE_EVENTS);
+    });
 
     const viewingLatest = page === 0 && !nodeId && !zoneId && !state;
+
     if (!viewingLatest || !autoScroll) {
       setUnseenCount((c) => c + 1);
     } else if (tableBodyRef.current) {
       tableBodyRef.current.scrollTop = 0;
     }
-  }, [lastMessage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lastMessage, page, nodeId, zoneId, state, autoScroll]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const viewingLatest = page === 0 && !nodeId && !zoneId && !state;
 
   // Merge: live events first (deduped by eventId), then the REST page fills the rest.
   const baseEvents = data?.events ?? [];
+
   const liveIds = new Set(liveEvents.map((e) => e.eventId));
-  const events = viewingLatest
+
+  const mergedEvents = viewingLatest
     ? [...liveEvents, ...baseEvents.filter((e) => !liveIds.has(e.eventId))]
     : baseEvents;
+
+  // Final deduplication by eventId
+  const events = Array.from(
+    new Map(
+      mergedEvents.map((event) => [event.eventId, event])
+    ).values()
+  );
 
   const totalPages = data?.totalPages ?? 0;
 

@@ -14,12 +14,17 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
+import com.gridweaver.model.AuditStatistics;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class EventAuditService {
 
     private static final Logger log = LoggerFactory.getLogger(EventAuditService.class);
     private static final int MAX_AUDIT_HISTORY = 2000;
+    private static final long STATS_WINDOW_MS = 60 * 60 * 1000L; // 1 hour
 
     private final BatteryStateService batteryStateService;
     private final GridNodeService gridNodeService;
@@ -83,11 +88,13 @@ public class EventAuditService {
     public int getEventCount() {
         return auditLog.size();
     }
+    private List<AuditEvent> filterEvents(String nodeId,
+                                          String zoneId,
+                                          String state,
+                                          Long from,
+                                          Long to) {
 
-    public AuditPageResponse queryEvents(String nodeId, String zoneId, String state,
-                                         Long from, Long to, int page, int size) {
-
-        List<AuditEvent> filtered = auditLog.stream()
+        return auditLog.stream()
                 .filter(e -> nodeId == null || nodeId.equalsIgnoreCase(e.nodeId()))
                 .filter(e -> zoneId == null || zoneId.equalsIgnoreCase(e.zoneId()))
                 .filter(e -> state == null
@@ -96,6 +103,17 @@ public class EventAuditService {
                 .filter(e -> from == null || e.timestamp() >= from)
                 .filter(e -> to == null || e.timestamp() <= to)
                 .collect(Collectors.toList());
+    }
+
+    public AuditPageResponse queryEvents(String nodeId,
+                                         String zoneId,
+                                         String state,
+                                         Long from,
+                                         Long to,
+                                         int page,
+                                         int size) {
+
+        List<AuditEvent> filtered = filterEvents(nodeId, zoneId, state, from, to);
 
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, Math.min(size, 500));
@@ -106,8 +124,66 @@ public class EventAuditService {
         int fromIndex = Math.min(safePage * safeSize, totalElements);
         int toIndex = Math.min(fromIndex + safeSize, totalElements);
 
-        List<AuditEvent> pageContent = new ArrayList<>(filtered.subList(fromIndex, toIndex));
+        return new AuditPageResponse(
+                new ArrayList<>(filtered.subList(fromIndex, toIndex)),
+                safePage,
+                safeSize,
+                totalElements,
+                totalPages
+        );
+    }
+    public List<AuditEvent> exportEvents(String nodeId,
+                                         String zoneId,
+                                         String state,
+                                         Long from,
+                                         Long to) {
 
-        return new AuditPageResponse(pageContent, safePage, safeSize, totalElements, totalPages);
+        return filterEvents(nodeId, zoneId, state, from, to);
+    }
+    public AuditStatistics computeStatistics() {
+
+        long now = System.currentTimeMillis();
+        long windowStart = now - STATS_WINDOW_MS;
+
+        List<AuditEvent> windowEvents = auditLog.stream()
+                .filter(e -> e.timestamp() >= windowStart)
+                .collect(Collectors.toList());
+
+        Map<String, Long> transitionCounts = new HashMap<>();
+        Map<String, Long> zoneCounts = new HashMap<>();
+
+        long faultCount = 0;
+
+        for (AuditEvent event : windowEvents) {
+
+            String transition =
+                    event.previousState() + "->" + event.newState();
+
+            transitionCounts.merge(transition, 1L, Long::sum);
+
+            if (event.zoneId() != null) {
+                zoneCounts.merge(event.zoneId(), 1L, Long::sum);
+            }
+
+            if ("FAULT".equals(event.newState())) {
+                faultCount++;
+            }
+        }
+
+        double hours = STATS_WINDOW_MS / (1000.0 * 60 * 60);
+
+        double eventsPerHour = windowEvents.isEmpty()
+                ? 0.0
+                : Math.round((windowEvents.size() / hours) * 10.0) / 10.0;
+
+        return new AuditStatistics(
+                windowEvents.size(),
+                eventsPerHour,
+                transitionCounts,
+                faultCount,
+                zoneCounts,
+                STATS_WINDOW_MS,
+                now
+        );
     }
 }
