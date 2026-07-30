@@ -14,6 +14,7 @@ import GridNodeMarker from "./GridNodeMarker";
 import TransitionToast from "./TransitionToast";
 import HeatmapLayer from "./HeatmapLayer";
 import PowerTransferArrows from "./PowerTransferArrows";
+import UnstableZoneOverlay from "./UnstableZoneOverlay";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -312,6 +313,7 @@ useEffect(() => {
             nodes={nodes}
             transfers={transfers}
           />
+          <UnstableZoneOverlay nodes={nodes} />
 
           {nodes.map((node) => (
             <GridNodeMarker
