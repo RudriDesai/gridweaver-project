@@ -49,63 +49,6 @@ public class PowerBalancingService {
     public PowerBalancingService(RegionalAnalyticsService regionalAnalyticsService) {
         this.regionalAnalyticsService = regionalAnalyticsService;
     }
-
-    /**
-     * Computes balancing recommendations by pairing surplus zones with
-     * deficit zones, largest imbalance first.
-     */
-    public List<BalancingRecommendation> computeRecommendations() {
-        List<ZoneStats> zones = regionalAnalyticsService.computeZoneStats();
-
-        List<ZoneStats> surplusZones = new ArrayList<>();
-        List<ZoneStats> deficitZones = new ArrayList<>();
-
-        for (ZoneStats z : zones) {
-            double net = z.totalGeneration() - z.totalConsumption();
-            if (net > IMBALANCE_THRESHOLD_KW) {
-                surplusZones.add(z);
-            } else if (net < -IMBALANCE_THRESHOLD_KW) {
-                deficitZones.add(z);
-            }
-        }
-
-        // Largest surplus/deficit first — biggest imbalances get resolved first
-        surplusZones.sort((a, b) -> Double.compare(
-                (b.totalGeneration() - b.totalConsumption()),
-                (a.totalGeneration() - a.totalConsumption())));
-        deficitZones.sort((a, b) -> Double.compare(
-                (a.totalGeneration() - a.totalConsumption()),
-                (b.totalGeneration() - b.totalConsumption())));
-
-        List<BalancingRecommendation> recommendations = new ArrayList<>();
-
-        for (ZoneStats surplusZone : surplusZones) {
-            double surplus = surplusZone.totalGeneration() - surplusZone.totalConsumption();
-
-            for (ZoneStats deficitZone : deficitZones) {
-                double deficit = deficitZone.totalConsumption() - deficitZone.totalGeneration();
-
-                double transfer = Math.round(Math.min(surplus, deficit) * 10.0) / 10.0;
-                if (transfer <= 0) {
-                    continue;
-                }
-
-                recommendations.add(new BalancingRecommendation(
-                        surplusZone.zoneId(),
-                        deficitZone.zoneId(),
-                        Math.round(surplus * 10.0) / 10.0,
-                        Math.round(deficit * 10.0) / 10.0,
-                        transfer,
-                        severity(deficit)
-                ));
-            }
-        }
-
-        log.debug("[BALANCING] Computed {} recommendations from {} surplus / {} deficit zones",
-                recommendations.size(), surplusZones.size(), deficitZones.size());
-
-        return recommendations;
-    }
     
     /**
      * Phase A16 — Executes balancing: any recommendation whose transfer
@@ -209,5 +152,94 @@ public class PowerBalancingService {
         if (deficit > 20.0) return "HIGH";
         if (deficit > 8.0) return "MEDIUM";
         return "LOW";
+    }
+    
+    /**
+     * Phase A19 — Optimized from O(surplusZones × deficitZones) pairwise
+     * cross-product to an O(n log n) greedy two-pointer allocation. The old
+     * version generated a recommendation for every surplus/deficit pair
+     * (noisy, and quadratic under many zones); this version walks both sorted
+     * lists once, allocating each surplus zone's excess into deficit zones
+     * until one side is exhausted, then advances — same "biggest imbalance
+     * first" behavior, far fewer/more meaningful recommendations.
+     *
+     * Edge cases now explicitly handled:
+     *  - No zones / no imbalance at all -> empty list, no NPE
+     *  - Single surplus with no deficits (or vice versa) -> empty list
+     *  - Residual floating-point dust (<0.05 kW) is dropped, not recommended
+     */
+    public List<BalancingRecommendation> computeRecommendations() {
+        List<ZoneStats> zones = regionalAnalyticsService.computeZoneStats();
+        if (zones.isEmpty()) {
+            return List.of();
+        }
+
+        List<double[]> surplusZones = new ArrayList<>(); // [index-into-zoneIds]
+        List<String> surplusIds = new ArrayList<>();
+        List<Double> surplusAmounts = new ArrayList<>();
+
+        List<String> deficitIds = new ArrayList<>();
+        List<Double> deficitAmounts = new ArrayList<>();
+
+        for (ZoneStats z : zones) {
+            double net = z.totalGeneration() - z.totalConsumption();
+            if (net > IMBALANCE_THRESHOLD_KW) {
+                surplusIds.add(z.zoneId());
+                surplusAmounts.add(net);
+            } else if (net < -IMBALANCE_THRESHOLD_KW) {
+                deficitIds.add(z.zoneId());
+                deficitAmounts.add(-net);
+            }
+        }
+
+        if (surplusIds.isEmpty() || deficitIds.isEmpty()) {
+            return List.of(); // nothing to balance — common steady-state case
+        }
+
+        // Sort indices by amount descending (largest imbalance resolved first)
+        List<Integer> surplusOrder = sortedIndicesDesc(surplusAmounts);
+        List<Integer> deficitOrder = sortedIndicesDesc(deficitAmounts);
+
+        double[] remainingSurplus = surplusAmounts.stream().mapToDouble(Double::doubleValue).toArray();
+        double[] remainingDeficit = deficitAmounts.stream().mapToDouble(Double::doubleValue).toArray();
+
+        List<BalancingRecommendation> recommendations = new ArrayList<>();
+
+        int si = 0, di = 0;
+        while (si < surplusOrder.size() && di < deficitOrder.size()) {
+            int sIdx = surplusOrder.get(si);
+            int dIdx = deficitOrder.get(di);
+
+            double transfer = Math.round(Math.min(remainingSurplus[sIdx], remainingDeficit[dIdx]) * 10.0) / 10.0;
+
+            if (transfer > 0.05) {
+                recommendations.add(new BalancingRecommendation(
+                        surplusIds.get(sIdx), deficitIds.get(dIdx),
+                        round1(remainingSurplus[sIdx]), round1(remainingDeficit[dIdx]),
+                        transfer, severity(remainingDeficit[dIdx])));
+
+                remainingSurplus[sIdx] -= transfer;
+                remainingDeficit[dIdx] -= transfer;
+
+                remainingSurplus[sIdx] = Math.max(0.0, remainingSurplus[sIdx]);
+remainingDeficit[dIdx] = Math.max(0.0, remainingDeficit[dIdx]);
+            }
+
+            if (remainingSurplus[sIdx] <= 0.05) si++;
+            if (remainingDeficit[dIdx] <= 0.05) di++;
+        }
+
+        log.debug("[BALANCING] Computed {} recommendations from {} surplus / {} deficit zones (greedy, O(n log n))",
+                recommendations.size(), surplusIds.size(), deficitIds.size());
+
+        return recommendations;
+    }
+
+    /** Returns indices into `amounts` sorted largest-first. */
+    private List<Integer> sortedIndicesDesc(List<Double> amounts) {
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < amounts.size(); i++) indices.add(i);
+        indices.sort((a, b) -> Double.compare(amounts.get(b), amounts.get(a)));
+        return indices;
     }
 }
