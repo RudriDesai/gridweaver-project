@@ -121,6 +121,7 @@ export async function fetchStabilityStatus() {
 export async function fetchStabilityAlerts(limit = 50) {
   const res = await fetch(`${BASE_URL}/stability/alerts?limit=${limit}`);
   return handleResponse(res);
+}
 export async function fetchAuditStatistics() {
   const res = await fetch(`${BASE_URL}/audit/statistics`);
   return handleResponse(res);
@@ -142,4 +143,9 @@ export function getAuditExportUrl({
   if (to) params.set("to", to);
 
   return `${BASE_URL}/audit/export?${params.toString()}`;
+}
+
+export async function fetchAuditHealth() {
+  const res = await fetch(`${BASE_URL}/audit/health`);
+  return handleResponse(res);
 }
