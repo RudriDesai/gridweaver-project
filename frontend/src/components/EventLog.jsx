@@ -27,27 +27,43 @@ function EventLog() {
   // Phase B17 — merge live WebSocket events onto the front of page 0 only.
   // Once the user filters or pages away from "latest", live events still
   // accumulate quietly (counted in the badge) without disrupting their view.
+  // Handles both the legacy single-event "AUDIT_EVENT"
+  // and the new batched "AUDIT_EVENT_BATCH" messages.
   useEffect(() => {
-    if (lastMessage?.type !== "AUDIT_EVENT" || !lastMessage.event) return;
+    if (!lastMessage) return;
+
+    let incoming = [];
+
+    if (
+      lastMessage.type === "AUDIT_EVENT_BATCH" &&
+      Array.isArray(lastMessage.events)
+    ) {
+      incoming = lastMessage.events;
+    } else if (
+      lastMessage.type === "AUDIT_EVENT" &&
+      lastMessage.event
+    ) {
+      incoming = [lastMessage.event];
+    } else {
+      return;
+    }
 
     setLiveEvents((prev) => {
-      // Remove existing event with the same eventId
-      const filtered = prev.filter(
-        (event) => event.eventId !== lastMessage.event.eventId
-      );
+      const merged = [...incoming, ...prev];
 
-      return [lastMessage.event, ...filtered].slice(0, MAX_LIVE_EVENTS);
+      return Array.from(
+        new Map(merged.map((event) => [event.eventId, event])).values()
+      ).slice(0, MAX_LIVE_EVENTS);
     });
 
     const viewingLatest = page === 0 && !nodeId && !zoneId && !state;
 
     if (!viewingLatest || !autoScroll) {
-      setUnseenCount((c) => c + 1);
+      setUnseenCount((count) => count + incoming.length);
     } else if (tableBodyRef.current) {
       tableBodyRef.current.scrollTop = 0;
     }
-  }, [lastMessage, page, nodeId, zoneId, state, autoScroll]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [lastMessage]); // eslint-disable-line react-hooks/exhaustive-deps
   const viewingLatest = page === 0 && !nodeId && !zoneId && !state;
 
   // Merge: live events first (deduped by eventId), then the REST page fills the rest.

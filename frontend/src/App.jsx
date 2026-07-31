@@ -9,6 +9,7 @@ import ProducerMonitoringDashboard from "./components/kafka/ProducerMonitoringDa
 import EventLog from "./components/EventLog";    
 import BalancingAnalyticsWidget from "./components/BalancingAnalyticsWidget";
 import AuditAnalyticsDashboard from "./components/AuditAnalyticsDashboard";
+import AuditMonitoringPanel from "./components/AuditMonitoringPanel";
 import "./App.css";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
           <RegionalAnalyticsPanel />
           <EventLog />               {/* Member B — Phase B15 */}
           <AuditAnalyticsDashboard />
+          <AuditMonitoringPanel />
           <ProducerMonitoringDashboard />
           <BalancingAnalyticsWidget />
         </main>
