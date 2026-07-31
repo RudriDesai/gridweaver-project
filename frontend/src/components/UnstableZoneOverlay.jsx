@@ -2,6 +2,7 @@ import { Circle, Tooltip } from "react-leaflet";
 import { computeZoneCentroids } from "../zoneUtils";
 import { fetchStabilityStatus } from "../services/api";
 import { usePolling } from "../hooks/usePolling";
+import { memo, useMemo } from "react";
 
 const SEVERITY_STYLE = {
   HIGH: { color: "#dc2626", radius: 1400 },
@@ -10,17 +11,24 @@ const SEVERITY_STYLE = {
 };
 
 /**
- * Phase A18 — Highlights unstable zones (overloaded or fault-clustered)
- * as a pulsing colored circle centered on each zone's centroid. Polls the
- * live status endpoint so highlighting persists even between alert events.
+ * Phase A19 — Same centroid-memoization optimization as PowerTransferArrows.
+ * Also short-circuits before computing centroids at all when there's
+ * nothing unstable to show.
  */
-export default function UnstableZoneOverlay({ nodes }) {
+function UnstableZoneOverlay({ nodes }) {
   const { data: statuses } = usePolling(fetchStabilityStatus, 4000);
 
-  if (!statuses || statuses.length === 0 || !nodes || nodes.length === 0) return null;
+  const unstable = useMemo(
+    () => (statuses ? statuses.filter((s) => !s.stable) : []),
+    [statuses]
+  );
 
-  const centroids = computeZoneCentroids(nodes);
-  const unstable = statuses.filter((s) => !s.stable);
+  const centroids = useMemo(
+    () => (unstable.length > 0 ? computeZoneCentroids(nodes) : {}),
+    [nodes, unstable.length]
+  );
+
+  if (unstable.length === 0) return null;
 
   return (
     <>
@@ -45,3 +53,5 @@ export default function UnstableZoneOverlay({ nodes }) {
     </>
   );
 }
+
+export default memo(UnstableZoneOverlay);

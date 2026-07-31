@@ -167,3 +167,19 @@
   font-size: 14px;
   line-height: 1.4;
 }
+
+/* Phase A19 — Dashboard responsiveness for smaller viewports */
+@media (max-width: 1024px) {
+  .app-layout {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header h1 {
+    font-size: 18px;
+  }
+  .app-main {
+    padding: 8px;
+  }
+}

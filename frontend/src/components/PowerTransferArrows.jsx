@@ -1,6 +1,6 @@
 import { Polyline, Marker } from "react-leaflet";
 import L from "leaflet";
-import { Fragment } from "react";
+import { memo, useMemo } from "react";
 import { computeZoneCentroids, bearingDegrees, SEVERITY_COLORS } from "../zoneUtils";
 
 /**
@@ -24,10 +24,16 @@ function arrowIcon(angleDeg, color) {
   });
 }
 
-export default function PowerTransferArrows({ nodes, transfers }) {
-  if (!transfers || transfers.length === 0) return null;
+/**
+ * Phase A19 — Centroid computation (a full pass over `nodes`) is now
+ * memoized on `nodes` so it only recomputes when the node list actually
+ * changes, not on every parent re-render triggered by unrelated state
+ * (e.g. sidebar polling). Wrapped in memo() with a shallow prop check.
+ */
+function PowerTransferArrows({ nodes, transfers }) {
+  const centroids = useMemo(() => computeZoneCentroids(nodes), [nodes]);
 
-  const centroids = computeZoneCentroids(nodes);
+  if (!transfers || transfers.length === 0) return null;
 
   return (
     <>
@@ -38,28 +44,20 @@ export default function PowerTransferArrows({ nodes, transfers }) {
 
         const color = SEVERITY_COLORS[t.severity] || "#3b82f6";
         const midpoint = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
-        // Bearing math points north(0deg); the CSS triangle points down by
-        // default, so we offset by 180deg to align the tip with travel direction.
         const angle = bearingDegrees(from, to) + 180;
 
         return (
-          <Fragment key={t.eventId}>
+          <div key={t.eventId}>
             <Polyline
               positions={[from, to]}
-              pathOptions={{
-                color,
-                weight: 3,
-                dashArray: "6 6",
-                opacity: 0.85,
-              }}
+              pathOptions={{ color, weight: 3, dashArray: "6 6", opacity: 0.85 }}
             />
-            <Marker
-              position={midpoint}
-              icon={arrowIcon(angle, color)}
-            />
-          </Fragment>
+            <Marker position={midpoint} icon={arrowIcon(angle, color)} />
+          </div>
         );
       })}
     </>
   );
 }
+
+export default memo(PowerTransferArrows);
