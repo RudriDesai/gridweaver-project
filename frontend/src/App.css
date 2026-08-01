@@ -1,25 +1,81 @@
-.app-header {
-  margin-bottom: 1rem;
+/* ============ Design tokens ============ */
+:root {
+  --gw-primary: #2563eb;
+  --gw-success: #22c55e;
+  --gw-warning: #f59e0b;
+  --gw-danger: #ef4444;
+
+  --gw-bg: #f8fafc;
+  --gw-surface: #ffffff;
+  --gw-surface-2: #f1f5f9;
+  --gw-surface-3: #e2e8f0;
+  --gw-border: #e5e7eb;
+  --gw-text: #0f172a;
+  --gw-text-muted: #64748b;
+
+  --gw-radius: 16px;
+  --gw-gap: 24px;
+  --gw-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  --gw-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.12);
 }
 
-.app-layout {
-  display: flex;
-  gap: 1.5rem;
-  align-items: flex-start;
+[data-theme="dark"] {
+  --gw-bg: #0b1220;
+  --gw-surface: #111827;
+  --gw-surface-2: #1a2333;
+  --gw-surface-3: #232e42;
+  --gw-border: #263042;
+  --gw-text: #e5e7eb;
+  --gw-text-muted: #94a3b8;
+  --gw-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  --gw-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
-.app-main {
-  flex: 1;
+.app {
+  background: var(--gw-bg);
+  min-height: 100vh;
+  padding: var(--gw-gap);
+  color: var(--gw-text);
+}
+
+/* ============ 12-column dashboard grid ============ */
+.gw-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--gw-gap);
+}
+
+.gw-grid > * {
   min-width: 0;
 }
 
+.gw-col-8 { grid-column: span 8; }
+.gw-col-4 { grid-column: span 4; }
+.gw-col-6 { grid-column: span 6; }
+.gw-col-12 { grid-column: span 12; }
+
+/* Every dashboard panel gets a consistent card treatment */
+.gw-card {
+  background: var(--gw-surface);
+  border-radius: var(--gw-radius);
+  box-shadow: var(--gw-shadow);
+  padding: 1.25rem;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.gw-card:hover {
+  box-shadow: var(--gw-shadow-hover);
+}
+
+@media (max-width: 1100px) {
+  .gw-col-8, .gw-col-4, .gw-col-6 { grid-column: span 12; }
+}
+
 .status-sidebar {
-  width: 260px;
-  flex-shrink: 0;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1rem;
+  background: var(--gw-surface);
+  border: 1px solid var(--gw-border);
+  border-radius: var(--gw-radius);
+  padding: 1.25rem;
 }
 
 .status-list {

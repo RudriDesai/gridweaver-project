@@ -1,0 +1,99 @@
+.gw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: var(--gw-surface);
+  border-radius: var(--gw-radius);
+  box-shadow: var(--gw-shadow);
+  padding: 1rem 1.5rem;
+  margin-bottom: var(--gw-gap);
+}
+
+.gw-header-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.gw-header-icon {
+  font-size: 2rem;
+}
+
+.gw-header-title h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gw-text);
+}
+
+.gw-header-title p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--gw-text-muted);
+}
+
+.gw-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.gw-header-clock {
+  font-size: 0.85rem;
+  color: var(--gw-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.gw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+}
+
+.gw-badge .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.gw-badge.ok {
+  background: color-mix(in srgb, var(--gw-success) 15%, transparent);
+  color: var(--gw-success);
+}
+
+.gw-badge.bad {
+  background: color-mix(in srgb, var(--gw-danger) 15%, transparent);
+  color: var(--gw-danger);
+}
+
+.gw-btn {
+  height: 40px;
+  padding: 0 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--gw-border);
+  background: var(--gw-surface-2);
+  color: var(--gw-text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.gw-btn:hover {
+  background: var(--gw-surface-3);
+  transform: translateY(-1px);
+}
+
+.gw-btn-icon {
+  width: 40px;
+  padding: 0;
+  font-size: 1.1rem;
+}
