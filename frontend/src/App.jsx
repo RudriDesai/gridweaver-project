@@ -4,8 +4,6 @@ import KpiCards from "./components/KpiCards";
 import GridMap from "./components/GridMap";
 import StatusSidebar from "./components/StatusSidebar";
 import SimulatorPanel from "./components/SimulatorPanel";
-import KafkaProducerStatus from "./components/kafka/KafkaProducerStatus";
-import KafkaConsumerStatus from "./components/kafka/KafkaConsumerStatus";
 import RegionalAnalyticsPanel from "./components/RegionalAnalyticsPanel";
 import ConsumerMonitoringDashboard from "./components/kafka/ConsumerMonitoringDashboard";
 import ProducerMonitoringDashboard from "./components/kafka/ProducerMonitoringDashboard";
@@ -54,14 +52,6 @@ function App() {
         {/* Row 3 — Event log, full width */}
         <div className="gw-col-12 gw-card">
           <EventLog /> {/* Member B — Phase B15 */}
-        </div>
-
-        {/* Row 4 — Kafka producer / consumer */}
-        <div className="gw-col-6 gw-card">
-          <KafkaProducerStatus />
-        </div>
-        <div className="gw-col-6 gw-card">
-          <KafkaConsumerStatus />
         </div>
 
         {/* Row 5 — Audit analytics + monitoring */}
