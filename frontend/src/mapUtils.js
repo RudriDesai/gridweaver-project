@@ -1,8 +1,8 @@
 export const STATUS_COLORS = {
-  CHARGING: "#22c55e",
-  DISCHARGING: "#f97316",
-  IDLE: "#3b82f6",
-  FAULT: "#ef4444",
+  CHARGING: "#34d399",
+  DISCHARGING: "#ffb020",
+  IDLE: "#38bdf8",
+  FAULT: "#f43f5e",
 };
 
 export const STATE_DESCRIPTIONS = {

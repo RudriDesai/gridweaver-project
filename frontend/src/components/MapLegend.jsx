@@ -1,8 +1,8 @@
 const LEGEND_ITEMS = [
-  { label: "Charging", color: "#22c55e" },
-  { label: "Discharging", color: "#f97316" },
-  { label: "Idle", color: "#3b82f6" },
-  { label: "Fault", color: "#ef4444" },
+  { label: "Charging", color: "#34d399" },
+  { label: "Discharging", color: "#ffb020" },
+  { label: "Idle", color: "#38bdf8" },
+  { label: "Fault", color: "#f43f5e" },
 ];
 
 export default function MapLegend() {

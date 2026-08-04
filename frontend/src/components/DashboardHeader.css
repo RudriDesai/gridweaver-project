@@ -5,6 +5,7 @@
   flex-wrap: wrap;
   gap: 1rem;
   background: var(--gw-surface);
+  border: 1px solid var(--gw-border);
   border-radius: var(--gw-radius);
   box-shadow: var(--gw-shadow);
   padding: 1rem 1.5rem;
@@ -15,22 +16,39 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  border-radius: 8px;
 }
 
 .gw-header-icon {
-  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gw-primary) 15%, transparent);
+  color: var(--gw-primary);
 }
 
-.gw-header-title h1 {
+.gw-header-title-text h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-family: var(--heading);
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--gw-text);
+  letter-spacing: -0.01em;
 }
 
-.gw-header-title p {
+.gw-header-title-text p {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--gw-text-muted);
 }
 
@@ -42,7 +60,8 @@
 }
 
 .gw-header-clock {
-  font-size: 0.85rem;
+  font-family: var(--gw-mono);
+  font-size: 0.8rem;
   color: var(--gw-text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -96,4 +115,16 @@
   width: 40px;
   padding: 0;
   font-size: 1.1rem;
+}
+
+@media (max-width: 640px) {
+  .gw-header {
+    padding: 0.85rem 1rem;
+  }
+  .gw-header-title-text p {
+    display: none;
+  }
+  .gw-header-clock {
+    display: none;
+  }
 }

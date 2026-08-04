@@ -1,20 +1,26 @@
-.event-log-panel { background: #fff; border-radius: 8px; padding: 12px 16px; margin-top: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-.event-log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 12px; }
+.event-log-panel { color: var(--gw-text); }
+.event-log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 12px; flex-wrap: wrap; }
 .event-log-header h3 { margin: 0; font-size: 14px; white-space: nowrap; }
-.event-log-search { flex: 1; max-width: 260px; padding: 4px 8px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px; }
-.event-log-empty { font-size: 12px; color: #999; }
-.event-log-table { width: 100%; border-collapse: collapse; font-size: 12px; max-height: 320px; }
-.event-log-table th, .event-log-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #eee; }
+.event-log-search { flex: 1; max-width: 260px; padding: 5px 8px; font-size: 12px; background: var(--gw-surface-2); border: 1px solid var(--gw-border); border-radius: 6px; color: var(--gw-text); }
+.event-log-empty { font-size: 12px; color: var(--gw-text-muted); }
+.event-log-table { width: 100%; border-collapse: collapse; font-size: 12px; max-height: 320px; font-family: var(--gw-mono); }
+.event-log-table th, .event-log-table td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--gw-border); color: var(--gw-text); }
+.event-log-table th { color: var(--gw-text-muted); font-weight: 600; }
 .event-log-table tbody { display: block; max-height: 260px; overflow-y: auto; }
 .event-log-table thead, .event-log-table tbody tr { display: table; width: 100%; table-layout: fixed; }
 .event-log-filters { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.event-log-filters input, .event-log-filters select { padding: 4px 8px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px; }
-.event-log-filters button { padding: 4px 12px; font-size: 12px; border: none; border-radius: 4px; background: #3b82f6; color: #fff; cursor: pointer; }
-.event-log-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; }
-.event-log-pagination button { padding: 3px 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9fafb; cursor: pointer; }
+.event-log-filters input, .event-log-filters select { padding: 5px 8px; font-size: 12px; background: var(--gw-surface-2); border: 1px solid var(--gw-border); border-radius: 6px; color: var(--gw-text); }
+.event-log-filters button { padding: 5px 12px; font-size: 12px; border: none; border-radius: 6px; background: var(--gw-primary); color: #06131c; font-weight: 600; cursor: pointer; }
+.event-log-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; flex-wrap: wrap; gap: 8px; }
+.event-log-pagination button { padding: 4px 10px; border: 1px solid var(--gw-border); border-radius: 6px; background: var(--gw-surface-2); color: var(--gw-text); cursor: pointer; }
 .event-log-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-.event-log-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; border: none; background: #3b82f6; color: #fff; cursor: pointer; animation: pulse-badge 1.4s infinite; }
+.event-log-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; border: none; background: var(--gw-primary); color: #06131c; font-weight: 600; cursor: pointer; animation: pulse-badge 1.4s infinite; }
 @keyframes pulse-badge { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
-.event-log-autoscroll { font-size: 11px; color: #666; display: flex; align-items: center; gap: 4px; }
+.event-log-autoscroll { font-size: 11px; color: var(--gw-text-muted); display: flex; align-items: center; gap: 4px; }
 .event-row-live { animation: flash-in 1.2s ease-out; }
-@keyframes flash-in { 0% { background: #dbeafe; } 100% { background: transparent; } }
+@keyframes flash-in { 0% { background: color-mix(in srgb, var(--gw-primary) 25%, transparent); } 100% { background: transparent; } }
+
+@media (max-width: 640px) {
+  .event-log-table { font-size: 11px; }
+  .event-log-search { max-width: none; }
+}
