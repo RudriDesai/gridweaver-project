@@ -1,20 +1,20 @@
-.power-summary-panel { background: #fff; border-radius: 8px; padding: 12px 16px; margin-top: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.power-summary-panel { color: var(--gw-text); }
 .power-summary-panel h3 { margin: 0 0 8px; font-size: 14px; }
-.power-summary-empty { font-size: 12px; color: #999; }
+.power-summary-empty { font-size: 12px; color: var(--gw-text-muted); }
 
 .power-summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.power-summary-card { border: 1px solid #eee; border-radius: 6px; padding: 8px 10px; font-size: 13px; }
+.power-summary-card { border: 1px solid var(--gw-border); background: var(--gw-surface-2); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.zone-name { font-weight: 700; }
+.zone-name { font-weight: 700; color: var(--gw-text); }
 .net-badge { font-size: 11px; padding: 2px 6px; border-radius: 10px; font-weight: 600; }
-.net-badge.surplus { background: #dcfce7; color: #16a34a; }
-.net-badge.deficit { background: #fee2e2; color: #dc2626; }
-.card-row { display: flex; justify-content: space-between; padding: 2px 0; color: #555; }
+.net-badge.surplus { background: color-mix(in srgb, var(--gw-success) 20%, transparent); color: var(--gw-success); }
+.net-badge.deficit { background: color-mix(in srgb, var(--gw-danger) 20%, transparent); color: var(--gw-danger); }
+.card-row { display: flex; justify-content: space-between; padding: 2px 0; color: var(--gw-text-muted); }
 
 .balancing-recommendations { margin-top: 12px; font-size: 13px; }
-.balancing-recommendations h4 { margin: 0 0 6px; font-size: 13px; }
+.balancing-recommendations h4 { margin: 0 0 6px; font-size: 13px; color: var(--gw-text); }
 .balancing-recommendations ul { list-style: none; padding: 0; margin: 0; }
-.balancing-recommendations li { padding: 4px 0; border-bottom: 1px dashed #eee; }
-.rec-high { color: #dc2626; }
-.rec-medium { color: #d97706; }
-.rec-low { color: #555; }
+.balancing-recommendations li { padding: 4px 0; border-bottom: 1px dashed var(--gw-border); }
+.rec-high { color: var(--gw-danger); }
+.rec-medium { color: var(--gw-warning); }
+.rec-low { color: var(--gw-text-muted); }

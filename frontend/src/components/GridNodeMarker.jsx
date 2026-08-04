@@ -59,7 +59,7 @@ function GridNodeMarker({node,flashing,onPopupOpen,lastTransition,lastKafkaEvent
         {lastTransition && (
           <>
             <br />
-            <span style={{ fontSize: "11px", color: "#3b82f6" }}>
+            <span style={{ fontSize: "11px", color: "#38bdf8" }}>
               Last transition: {lastTransition.fromState} →{" "}
               {lastTransition.toState}
             </span>

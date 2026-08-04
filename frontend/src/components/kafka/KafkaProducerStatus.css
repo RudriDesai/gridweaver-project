@@ -1,9 +1,9 @@
 .kafka-status-card {
-  background: #1e1e2e;
-  border: 1px solid #313244;
-  border-radius: 8px;
+  background: var(--gw-surface-2);
+  border: 1px solid var(--gw-border);
+  border-radius: 10px;
   padding: 16px;
-  min-width: 220px;
+  min-width: 200px;
 }
 
 .kafka-status-header {
@@ -11,12 +11,13 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  gap: 8px;
 }
 
 .kafka-status-title {
   font-size: 14px;
   font-weight: 600;
-  color: #cdd6f4;
+  color: var(--gw-text);
 }
 
 .kafka-badge {
@@ -28,19 +29,20 @@
 }
 
 .kafka-badge--up {
-  background: #16302b;
-  color: #a6e3a1;
+  background: color-mix(in srgb, var(--gw-success) 18%, transparent);
+  color: var(--gw-success);
 }
 
 .kafka-badge--down,
 .kafka-badge--connecting {
-  background: #302020;
-  color: #f38ba8;
+  background: color-mix(in srgb, var(--gw-danger) 18%, transparent);
+  color: var(--gw-danger);
 }
 
 .kafka-status-metrics {
   display: flex;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .kafka-metric {
@@ -49,18 +51,19 @@
 }
 
 .kafka-metric-value {
+  font-family: var(--gw-mono);
   font-size: 22px;
   font-weight: 700;
-  color: #89b4fa;
+  color: var(--gw-primary);
 }
 
 .kafka-metric--error .kafka-metric-value {
-  color: #f38ba8;
+  color: var(--gw-danger);
 }
 
 .kafka-metric-label {
   font-size: 11px;
-  color: #a6adc8;
+  color: var(--gw-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -68,7 +71,7 @@
 .kafka-status-error {
   margin-top: 8px;
   font-size: 11px;
-  color: #f38ba8;
+  color: var(--gw-danger);
 }
 
 .sparkline {
@@ -81,22 +84,7 @@
 
 .sparkline-bar {
   flex: 1;
-  background: #6366f1;
-  border-radius: 1px;
-  min-height: 2px;
-}
-
-.sparkline {
-  display: flex;
-  align-items: flex-end;
-  gap: 1px;
-  height: 20px;
-  margin-top: 4px;
-}
-
-.sparkline-bar {
-  flex: 1;
-  background: #6366f1;
+  background: var(--gw-primary);
   border-radius: 1px;
   min-height: 2px;
 }
