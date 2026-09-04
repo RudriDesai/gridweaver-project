@@ -1,34 +1,36 @@
-/* ============ Design tokens ============ */
+/* ============ Design tokens — GridWeaver grid-ops theme ============ */
 :root {
-  --gw-primary: #2563eb;
-  --gw-success: #22c55e;
-  --gw-warning: #f59e0b;
-  --gw-danger: #ef4444;
+  /* status colors mirror the battery state machine */
+  --gw-primary: #38bdf8;   /* current / idle / links */
+  --gw-success: #34d399;   /* stable / charging */
+  --gw-warning: #ffb020;   /* discharging / caution */
+  --gw-danger: #f43f5e;    /* fault / critical */
 
-  --gw-bg: #f8fafc;
-  --gw-surface: #ffffff;
-  --gw-surface-2: #f1f5f9;
-  --gw-surface-3: #e2e8f0;
-  --gw-border: #e5e7eb;
-  --gw-text: #0f172a;
-  --gw-text-muted: #64748b;
+  --gw-bg: #0a0e14;
+  --gw-surface: #121a24;
+  --gw-surface-2: #17212e;
+  --gw-surface-3: #1e2a3a;
+  --gw-border: #223041;
+  --gw-text: #e8edf2;
+  --gw-text-muted: #8a98a8;
 
-  --gw-radius: 16px;
+  --gw-radius: 14px;
   --gw-gap: 24px;
-  --gw-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-  --gw-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.12);
+  --gw-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  --gw-shadow-hover: 0 14px 32px rgba(0, 0, 0, 0.45);
+  --gw-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 }
 
-[data-theme="dark"] {
-  --gw-bg: #0b1220;
-  --gw-surface: #111827;
-  --gw-surface-2: #1a2333;
-  --gw-surface-3: #232e42;
-  --gw-border: #263042;
-  --gw-text: #e5e7eb;
-  --gw-text-muted: #94a3b8;
-  --gw-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-  --gw-shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.45);
+[data-theme="light"] {
+  --gw-bg: #eef2f6;
+  --gw-surface: #ffffff;
+  --gw-surface-2: #f4f7fa;
+  --gw-surface-3: #e7edf3;
+  --gw-border: #d7dfe7;
+  --gw-text: #0f1720;
+  --gw-text-muted: #5b6b7a;
+  --gw-shadow: 0 8px 20px rgba(15, 23, 32, 0.08);
+  --gw-shadow-hover: 0 12px 28px rgba(15, 23, 32, 0.12);
 }
 
 .app {
@@ -36,6 +38,14 @@
   min-height: 100vh;
   padding: var(--gw-gap);
   color: var(--gw-text);
+  font-family: var(--sans);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: 12px;
+  }
 }
 
 /* ============ 12-column dashboard grid ============ */
@@ -54,21 +64,32 @@
 .gw-col-6 { grid-column: span 6; }
 .gw-col-12 { grid-column: span 12; }
 
+@media (max-width: 1100px) {
+  .gw-grid { gap: 16px; }
+  .gw-col-8, .gw-col-4, .gw-col-6 { grid-column: span 12; }
+}
+
+@media (max-width: 640px) {
+  .gw-grid { gap: 12px; }
+}
+
 /* Every dashboard panel gets a consistent card treatment */
 .gw-card {
   background: var(--gw-surface);
+  border: 1px solid var(--gw-border);
   border-radius: var(--gw-radius);
   box-shadow: var(--gw-shadow);
   padding: 1.25rem;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, background 0.2s ease;
+  overflow: auto;
 }
 
 .gw-card:hover {
   box-shadow: var(--gw-shadow-hover);
 }
 
-@media (max-width: 1100px) {
-  .gw-col-8, .gw-col-4, .gw-col-6 { grid-column: span 12; }
+@media (max-width: 640px) {
+  .gw-card { padding: 1rem; }
 }
 
 .status-sidebar {
@@ -76,6 +97,16 @@
   border: 1px solid var(--gw-border);
   border-radius: var(--gw-radius);
   padding: 1.25rem;
+  color: var(--gw-text);
+}
+
+.status-sidebar h3 {
+  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+}
+
+.status-sidebar h3 + h3 {
+  margin-top: 1rem;
 }
 
 .status-list {
@@ -87,20 +118,17 @@
 .status-list li {
   display: flex;
   justify-content: space-between;
-  padding: 0.3rem 0;
-  border-bottom: 1px dashed #e5e7eb;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed var(--gw-border);
   font-size: 0.9rem;
+  gap: 0.5rem;
 }
 
-.status-list .ok { color: #22c55e; }
-.status-list .bad { color: #ef4444; }
+.status-list .ok { color: var(--gw-success); }
+.status-list .bad { color: var(--gw-danger); }
 
 .simulator-panel {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  margin-top: 0;
 }
 
 .simulator-controls {
@@ -116,28 +144,38 @@
   flex-direction: column;
   font-size: 0.85rem;
   gap: 0.25rem;
+  color: var(--gw-text-muted);
 }
 
 .simulator-controls input {
-  padding: 0.3rem;
-  width: 100px;
+  padding: 0.45rem 0.6rem;
+  width: 120px;
+  max-width: 100%;
+  background: var(--gw-surface-2);
+  border: 1px solid var(--gw-border);
+  border-radius: 8px;
+  color: var(--gw-text);
 }
 
 .simulator-controls button {
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1.1rem;
   cursor: pointer;
+  background: var(--gw-primary);
+  color: #06131c;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  transition: filter 0.15s ease;
+}
+
+.simulator-controls button:hover {
+  filter: brightness(1.08);
 }
 
 .simulator-controls button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.app {
-  font-family: system-ui, sans-serif;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1rem;
+  opacity: 0.5;
+  filter: none;
 }
 
 .map-header {
@@ -150,38 +188,47 @@
 
 .map-header h2 {
   margin: 0;
+  font-size: 1.1rem;
 }
 
 .map-header span {
-  color: #555;
+  color: var(--gw-text-muted);
+  font-size: 0.85rem;
 }
 
 .map-header button {
   margin-left: auto;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: white;
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--gw-border);
+  border-radius: 8px;
+  background: var(--gw-surface-2);
+  color: var(--gw-text);
   cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s ease;
 }
 
 .map-header button:hover {
-  background: #f3f3f3;
+  background: var(--gw-surface-3);
 }
 
 .status-banner {
   padding: 2rem;
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  color: var(--gw-text-muted);
 }
 
 .status-banner.error {
-  color: #ef4444;
-  font-weight: bold;
+  color: var(--gw-danger);
+  font-weight: 600;
 }
 
 .grid-map-wrapper {
   width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--gw-border);
 }
 
 .custom-node-marker.flash div {
@@ -198,10 +245,12 @@
   top: 10px;
   right: 10px;
   z-index: 1000;
-  background: white;
+  background: var(--gw-surface);
+  border: 1px solid var(--gw-border);
+  color: var(--gw-text);
   padding: 8px 12px;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  border-radius: 8px;
+  box-shadow: var(--gw-shadow);
   font-size: 12px;
 }
 
@@ -219,24 +268,22 @@
   display: inline-block;
 }
 
-/* Optional: Better popup appearance */
+/* Leaflet popup theming */
 .leaflet-popup-content {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.4;
+  font-family: var(--sans);
 }
 
-/* Phase A19 — Dashboard responsiveness for smaller viewports */
-@media (max-width: 1024px) {
-  .app-layout {
-    flex-direction: column;
-  }
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--gw-surface);
+  color: var(--gw-text);
 }
 
 @media (max-width: 640px) {
-  .app-header h1 {
-    font-size: 18px;
-  }
-  .app-main {
-    padding: 8px;
+  .map-legend {
+    font-size: 11px;
+    padding: 6px 8px;
   }
 }

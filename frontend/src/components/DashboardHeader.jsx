@@ -3,7 +3,7 @@ import { fetchHealth } from "../services/api";
 import { usePolling } from "../hooks/usePolling";
 import "./DashboardHeader.css";
 
-export default function DashboardHeader({ darkMode, onToggleDarkMode }) {
+export default function DashboardHeader({ darkMode, onToggleDarkMode, onNavigateHome }) {
   const [now, setNow] = useState(new Date());
   const { data: health } = usePolling(fetchHealth, 5000);
 
@@ -16,17 +16,29 @@ export default function DashboardHeader({ darkMode, onToggleDarkMode }) {
 
   return (
     <header className="gw-header">
-      <div className="gw-header-title">
-        <span className="gw-header-icon">⚡</span>
-        <div>
-          <h1>GridWeaver Dashboard</h1>
+      <button
+        type="button"
+        className="gw-header-title"
+        onClick={onNavigateHome}
+        aria-label="GridWeaver — back to home page"
+      >
+        <span className="gw-header-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
+            <path
+              d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"
+              fill="currentColor"
+            />
+          </svg>
+        </span>
+        <span className="gw-header-title-text">
+          <h1>GridWeaver</h1>
           <p>Live Grid Monitoring Platform</p>
-        </div>
-      </div>
+        </span>
+      </button>
 
       <div className="gw-header-actions">
         <span className="gw-header-clock">
-          Last Update&nbsp;: {now.toLocaleTimeString()}
+          Last update&nbsp;: {now.toLocaleTimeString()}
         </span>
 
         <span className={`gw-badge ${connected ? "ok" : "bad"}`}>
@@ -42,7 +54,7 @@ export default function DashboardHeader({ darkMode, onToggleDarkMode }) {
           className="gw-btn gw-btn-icon"
           type="button"
           onClick={onToggleDarkMode}
-          aria-label="Toggle dark mode"
+          aria-label="Toggle light and dark mode"
         >
           {darkMode ? "☀️" : "🌙"}
         </button>
