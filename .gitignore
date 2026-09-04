@@ -1,0 +1,12 @@
+# Java / Maven build output
+**/target/
+**/bin/
+*.class
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
