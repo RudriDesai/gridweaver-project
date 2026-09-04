@@ -57,6 +57,26 @@ public class SimulatorController {
     public ResponseEntity<SimulationStatus> status() {
         return ResponseEntity.ok(simulatorService.getStatus());
     }
+
+    /**
+     * Reports how close this process is to its OS file-descriptor limit.
+     * Check this BEFORE and AFTER a batch when nodes are already
+     * connected from a previous run - if "open" is already sitting near
+     * "max", that (not application logic) is why the next batch fails.
+     * GET /api/simulator/fd-stats
+     */
+    @GetMapping("/fd-stats")
+    public ResponseEntity<Map<String, Object>> fdStats() {
+        var stats = simulatorService.getFdStats();
+        Map<String, Object> response = new HashMap<>();
+        response.put("openFileDescriptors", stats.open());
+        response.put("maxFileDescriptors", stats.max());
+        if (stats.max() > 0) {
+            response.put("utilizationPercent",
+                    Math.round((stats.open() * 100.0) / stats.max()));
+        }
+        return ResponseEntity.ok(response);
+    }
     
     @PostMapping("/storm")
     public ResponseEntity<String> triggerStorm(@RequestParam(defaultValue = "50") int nodeCount) {

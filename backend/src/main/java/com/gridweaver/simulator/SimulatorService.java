@@ -6,6 +6,7 @@ import com.gridweaver.kafka.producer.TelemetryProducerService;
 import com.gridweaver.service.BatteryStateService;
 import com.gridweaver.service.GridNodeService;
 import com.gridweaver.kafka.dto.TelemetryEvent;
+import com.gridweaver.util.SystemResourceMonitor;
 import java.time.Instant;
 
 /**
@@ -21,12 +22,15 @@ public class SimulatorService {
     private final IoTSimulatorClient simulatorClient;
     private final GridNodeService gridNodeService;
     private final TelemetryProducerService telemetryProducerService;
+    private final SystemResourceMonitor resourceMonitor;
 
     public SimulatorService(GridNodeService gridNodeService,
-            TelemetryProducerService telemetryProducerService) {
+            TelemetryProducerService telemetryProducerService,
+            SystemResourceMonitor resourceMonitor) {
 
         this.gridNodeService = gridNodeService;
         this.telemetryProducerService = telemetryProducerService;
+        this.resourceMonitor = resourceMonitor;
 
         this.simulatorClient = new IoTSimulatorClient(DEFAULT_WS_URL, telemetryProducerService);
     }
@@ -38,7 +42,14 @@ public class SimulatorService {
         if (messagesPerNode <= 0 || messagesPerNode > 100) {
             throw new IllegalArgumentException("messagesPerNode must be between 1 and 100");
         }
+        // Log/warn on fd headroom BEFORE launching - this is what tells you
+        // whether a failure wave is about to be an OS limit, not a bug.
+        resourceMonitor.checkHeadroomForBatch(nodeCount);
         simulatorClient.startSimulationAsync(nodeCount, messagesPerNode);
+    }
+
+    public SystemResourceMonitor.FdStats getFdStats() {
+        return resourceMonitor.currentFdStats();
     }
 
     public IoTSimulatorClient.SimulationStatus getStatus() {
