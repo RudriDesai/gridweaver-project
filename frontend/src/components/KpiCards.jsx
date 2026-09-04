@@ -22,7 +22,7 @@ export default function KpiCards() {
     ? nodes.filter((n) => n.state === "FAULT").length
     : "—";
   const connected = metrics?.activeConnections ?? "—";
-  const eventsSent = producer?.totalMessagesSent ?? producer?.totalSent ?? "—";
+  const eventsSent = producer?.totalPublished ?? "—";
 
   return (
     <div className="kpi-grid">
