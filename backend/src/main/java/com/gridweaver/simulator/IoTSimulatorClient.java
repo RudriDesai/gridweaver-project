@@ -92,6 +92,21 @@ public class IoTSimulatorClient {
 
     int batchSize = 100;
 
+    /**
+     * Max batches allowed to be "in flight" (submitted but not yet
+     * connected+closed or failed) before we pause and let things drain.
+     * A fixed Thread.sleep(300) between batches doesn't actually know
+     * whether the previous batch's connections finished - it just hopes
+     * 300ms was enough. Under load (e.g. nodes already connected from a
+     * prior run still holding fds/ports), that assumption breaks down and
+     * batches pile on top of each other, which is exactly the pattern
+     * of "fresh batch succeeds, batch on top of existing load fails".
+     * Backpressure fixes this by waiting on actual progress instead of a
+     * guessed delay.
+     */
+    private static final int MAX_OUTSTANDING = 500;
+    private static final int RETRY_ATTEMPTS = 2;
+
     private void runBatch(int nodeCount, int messagesPerNode) {
         log.info("Starting simulation: {} nodes, {} messages each", nodeCount, messagesPerNode);
         CountDownLatch completionLatch = new CountDownLatch(nodeCount);
@@ -101,20 +116,25 @@ public class IoTSimulatorClient {
 
                 int end = Math.min(start + batchSize, nodeCount);
 
+                // Backpressure: don't submit the next batch until the
+                // number of nodes still "in flight" (submitted but not
+                // yet resolved either way) drops under MAX_OUTSTANDING.
+                while ((start - (completedCount.get() + failedCount.get())) > MAX_OUTSTANDING) {
+                    Thread.sleep(50);
+                }
+
                 for (int i = start; i < end; i++) {
 
                     final String nodeId = "SIM-NODE-" + String.format("%05d", i + 1);
 
                     final String zoneId = ZONES[i % ZONES.length];
 
-                    executor.submit(() -> simulateNode(nodeId, zoneId,
+                    executor.submit(() -> simulateNodeWithRetry(nodeId, zoneId,
                             messagesPerNode,
                             completionLatch));
                 }
-
-                Thread.sleep(300); // allow previous batch to establish connections
             }
-            completionLatch.await(5, TimeUnit.MINUTES);
+            completionLatch.await(10, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warn("Simulation interrupted");
@@ -124,7 +144,49 @@ public class IoTSimulatorClient {
                 connectedCount.get(), failedCount.get(), ackCount.get());
     }
 
-    private void simulateNode(String nodeId, String zoneId, int messagesPerNode, CountDownLatch latch) {
+    /**
+     * Wraps simulateNode with a couple of short-backoff retries. A single
+     * transient failure (handshake timeout because the accept queue was
+     * momentarily full, an ephemeral port not yet released from a socket
+     * still in TIME_WAIT, etc.) currently counts as a hard failure with
+     * no second chance. Most of these are recoverable half a second later.
+     */
+    private void simulateNodeWithRetry(String nodeId, String zoneId, int messagesPerNode, CountDownLatch latch) {
+        for (int attempt = 0; attempt <= RETRY_ATTEMPTS; attempt++) {
+            // Pass the latch on EVERY attempt, not just the last one.
+            // Only the success path (afterConnectionClosed) ever touches
+            // it, so this is safe on every attempt and guarantees the
+            // latch is counted down exactly once, whichever attempt
+            // actually connects. Previously it was only wired up on the
+            // final attempt, so a node that succeeded on attempt 0 or 1
+            // never counted down - the latch then sat open until the
+            // 10-minute await timeout, which is why the simulator kept
+            // reporting "running" long after all nodes had finished.
+            if (simulateNode(nodeId, zoneId, messagesPerNode, latch)) {
+                return; // connected - afterConnectionClosed will count down the latch
+            }
+            if (attempt < RETRY_ATTEMPTS) {
+                failedCount.decrementAndGet(); // undo the failure tally from this attempt, we're retrying
+                try {
+                    Thread.sleep(200L * (attempt + 1)); // small backoff
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    latch.countDown();
+                    return;
+                }
+            }
+        }
+        latch.countDown(); // gave up after RETRY_ATTEMPTS - count it as resolved (failed)
+    }
+
+    /**
+     * Attempts a single connection for one node. Returns true if the
+     * connection was established (in which case afterConnectionClosed
+     * will count down {@code latch}, if non-null, once the node finishes).
+     * Returns false on failure (latch is NOT touched - the caller decides
+     * whether to retry or give up and count it down itself).
+     */
+    private boolean simulateNode(String nodeId, String zoneId, int messagesPerNode, CountDownLatch latch) {
         StandardWebSocketClient client = new StandardWebSocketClient();
 
         WebSocketHandler handler = new TextWebSocketHandler() {
@@ -190,15 +252,18 @@ public class IoTSimulatorClient {
             @Override
             public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) {
                 completedCount.incrementAndGet();
-                latch.countDown();
+                if (latch != null) {
+                    latch.countDown();
+                }
             }
         };
 
         try {
             client.execute(handler, wsUrl).get(10, TimeUnit.SECONDS);
+            return true;
         } catch (Exception e) {
             failedCount.incrementAndGet();
-            latch.countDown();
+            return false;
         }
     }
 
